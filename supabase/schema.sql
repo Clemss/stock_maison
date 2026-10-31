@@ -128,3 +128,53 @@ exception when others then null; end $$;
 do $$ begin
   alter publication supabase_realtime add table emplacements;
 exception when others then null; end $$;
+
+-- =============================================================
+--  V2 — Recettes
+-- =============================================================
+create table if not exists recettes (
+  id             uuid primary key default gen_random_uuid(),
+  foyer_id       uuid not null references foyers(id) on delete cascade,
+  nom            text not null,
+  portions       int  not null default 2 check (portions > 0),
+  temps_min      int,
+  etapes         text,
+  source         text not null default 'manuel',  -- manuel | claude
+  favori         boolean not null default false,
+  derniere_fois  date,
+  nb_fois        int not null default 0,
+  cree_le        timestamptz not null default now()
+);
+
+create table if not exists recette_ingredients (
+  id          uuid primary key default gen_random_uuid(),
+  recette_id  uuid not null references recettes(id) on delete cascade,
+  nom         text not null,
+  quantite    numeric(8,2),
+  unite       text,
+  produit_id  uuid references produits(id) on delete set null,  -- lien vers le stock
+  ordre       int not null default 0
+);
+
+create index if not exists recettes_foyer_idx on recettes(foyer_id);
+create index if not exists recette_ing_idx on recette_ingredients(recette_id);
+
+alter table recettes            enable row level security;
+alter table recette_ingredients enable row level security;
+
+drop policy if exists "recettes du foyer" on recettes;
+create policy "recettes du foyer" on recettes for all
+  using (foyer_id in (select mes_foyers()))
+  with check (foyer_id in (select mes_foyers()));
+
+drop policy if exists "ingredients du foyer" on recette_ingredients;
+create policy "ingredients du foyer" on recette_ingredients for all
+  using (recette_id in (select id from recettes where foyer_id in (select mes_foyers())))
+  with check (recette_id in (select id from recettes where foyer_id in (select mes_foyers())));
+
+do $$ begin
+  alter publication supabase_realtime add table recettes;
+exception when others then null; end $$;
+do $$ begin
+  alter publication supabase_realtime add table recette_ingredients;
+exception when others then null; end $$;

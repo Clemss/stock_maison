@@ -163,11 +163,11 @@ code { font-size: .9em; }
 
 /* ---------- Barre d'onglets ---------- */
 .barre-onglets {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: grid; grid-template-columns: repeat(4, 1fr);
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: grid; grid-template-columns: repeat(5, 1fr);
   padding: 4px 4px var(--sab); background: color-mix(in srgb, var(--papier) 88%, transparent);
   backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid var(--trait);
 }
-.onglet { position: relative; height: var(--nav-h); border: 0; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11.5px; font-weight: 500; color: var(--encre-2); }
+.onglet { position: relative; height: var(--nav-h); border: 0; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11px; font-weight: 500; color: var(--encre-2); }
 .onglet.actif { color: var(--encre); font-weight: 700; }
 .pastille { position: absolute; top: 6px; left: calc(50% + 6px); min-width: 19px; height: 19px; padding: 0 5px; border-radius: 99px; background: var(--rouge); color: #fff; font-size: 11.5px; display: grid; place-items: center; }
 
@@ -202,3 +202,42 @@ code { font-size: .9em; }
 }
 
 @media (prefers-reduced-motion: reduce) { .sheet, .compteur button, .interrupteur input, .interrupteur input::after { transition: none; } }
+
+/* ---------- Recettes ---------- */
+.liste-recettes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.recette {
+  width: 100%; display: flex; flex-direction: column; gap: 3px; text-align: left; position: relative; overflow: hidden;
+  padding: 13px 14px 16px; border-radius: var(--rayon); border: 1px solid var(--trait); background: var(--surface);
+}
+.recette .nom { font-size: 18px; font-weight: 700; }
+.recette .meta { font-size: 14px; }
+.dispo { font-size: 14px; }
+.manque { color: var(--encre-2); }
+.tag-ok { background: color-mix(in srgb, var(--frigo) 16%, transparent); color: var(--frigo); }
+.jauge { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--trait); }
+.jauge::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--pc); background: var(--frigo); }
+
+.sheet h3 { font-size: 17px; font-weight: 700; margin: 8px 0 0; }
+.sans-marge { margin: -4px 0 0; }
+.portions { display: flex; justify-content: space-between; align-items: center; padding: 6px 6px 6px 14px; border-radius: 12px; background: var(--surface); border: 1.5px solid var(--trait); font-weight: 600; }
+.portions .compteur button { --c: var(--frigo); }
+.ingredients { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--trait); border-radius: var(--rayon); }
+.ing { display: grid; grid-template-columns: 14px 1fr; column-gap: 10px; padding: 9px 12px; align-items: baseline; }
+.ing + .ing { border-top: 1px solid var(--trait); }
+.ing .point { width: 9px; height: 9px; border-radius: 50%; background: var(--frigo); align-self: center; }
+.ing small { grid-column: 2; color: var(--encre-2); font-size: 13px; }
+.ing-peu .point { background: var(--ambre); } .ing-peu small { color: var(--ambre); }
+.ing-manque .point { background: transparent; border: 2px solid var(--rouge); width: 10px; height: 10px; } .ing-manque small { color: var(--rouge); }
+.etapes { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; line-height: 1.45; }
+.etapes li::marker { font-weight: 700; color: var(--frigo); }
+
+.retraits { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.retrait { padding: 10px 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--trait); }
+.retrait-tete { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; margin-bottom: 8px; }
+.retrait-tete small { color: var(--encre-2); font-size: 13px; white-space: nowrap; }
+.retrait-champs { display: grid; grid-template-columns: 1fr 112px; gap: 8px; }
+.form .retrait-q { flex-direction: row; align-items: center; gap: 6px; }
+.retrait-q input { padding: 10px 8px !important; }
+.retrait-q span { font-size: 13px; font-weight: 500; min-width: 32px; }
+.form .retrait-champs select { font-size: 15px; padding: 10px 28px 10px 10px; }
+.ing-base .point { background: var(--trait); }

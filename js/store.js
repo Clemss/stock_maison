@@ -47,6 +47,20 @@ function demoStore() {
     };
     save();
   }
+  if (!db.recettes) {
+    const I = (nom, quantite, unite) => ({ id: uid(), nom, quantite, unite, produit_id: null });
+    const R = (nom, portions, temps_min, ingredients, etapes) =>
+      ({ id: uid(), foyer_id: db.foyer.id, nom, portions, temps_min, etapes, source: "claude", favori: false, derniere_fois: null, nb_fois: 0, ingredients });
+    db.recettes = [
+      R("Pâtes à la bolognaise", 2, 25, [I("Pâtes", 250, "g"), I("Steaks hachés", 2, "pièce"), I("Sauce tomate", 1, "pot"), I("Oignon", 1, "pièce"), I("Emmental râpé", 0.5, "sachet")],
+        "Faire revenir l'oignon émincé.\nAjouter les steaks émiettés, cuire 5 min.\nVerser la sauce tomate, laisser mijoter 10 min.\nCuire les pâtes, servir avec l'emmental."),
+      R("Cabillaud, riz et haricots verts", 2, 20, [I("Filets de cabillaud", 1, "paquet"), I("Riz basmati", 150, "g"), I("Haricots verts", 0.5, "sachet"), I("Citron", 1, "pièce")],
+        "Cuire le riz.\nCuire les haricots verts 8 min à l'eau bouillante.\nPoêler le cabillaud 3 min par face, arroser de citron."),
+      R("Omelette jambon fromage", 2, 10, [I("Œufs", 4, "pièce"), I("Jambon blanc", 1, "paquet"), I("Emmental râpé", 0.25, "sachet")],
+        "Battre les œufs, ajouter le jambon coupé et l'emmental.\nCuire à la poêle 4 à 5 min."),
+    ];
+    save();
+  }
   const me = { id: "demo", email: "demo@local" };
 
   return {
@@ -79,6 +93,25 @@ function demoStore() {
     },
     async setQuantite(id, quantite) { const p = db.produits.find((x) => x.id === id); if (p) { p.quantite = quantite; p.maj_le = new Date().toISOString(); save(); } },
     async deleteProduit(id) { db.produits = db.produits.filter((p) => p.id !== id); save(); emit(); },
+    async listRecettes() { return JSON.parse(JSON.stringify(db.recettes)); },
+    async saveRecette(r, ingredients) {
+      const ings = ingredients.map((i) => ({ ...i, id: i.id || uid() }));
+      if (r.id) Object.assign(db.recettes.find((x) => x.id === r.id), r, { ingredients: ings });
+      else db.recettes.push({ favori: false, derniere_fois: null, nb_fois: 0, source: "manuel", ...r, id: uid(), foyer_id: db.foyer.id, ingredients: ings });
+      save(); emit();
+    },
+    async deleteRecette(id) { db.recettes = db.recettes.filter((r) => r.id !== id); save(); emit(); },
+    async cuisiner(recetteId, retraits) {
+      const r = db.recettes.find((x) => x.id === recetteId);
+      for (const t of retraits) {
+        const p = db.produits.find((x) => x.id === t.produit_id);
+        if (p) { p.quantite = Math.max(0, +(+p.quantite - t.retrait).toFixed(2)); p.maj_le = new Date().toISOString(); }
+        const ing = r?.ingredients.find((i) => i.id === t.ingredient_id);
+        if (ing) ing.produit_id = t.produit_id;
+      }
+      if (r) { r.derniere_fois = new Date().toISOString().slice(0, 10); r.nb_fois = (r.nb_fois || 0) + 1; }
+      save(); emit();
+    },
     subscribe(cb) { listeners.add(cb); return () => listeners.delete(cb); },
   };
 }
@@ -128,10 +161,36 @@ async function supabaseStore(url, key) {
     },
     async setQuantite(id, quantite) { ok(await sb.from("produits").update({ quantite, maj_le: new Date().toISOString() }).eq("id", id)); },
     async deleteProduit(id) { ok(await sb.from("produits").delete().eq("id", id)); },
+    async listRecettes() {
+      const rows = ok(await sb.from("recettes").select("*, recette_ingredients(*)").order("nom"));
+      return rows.map(({ recette_ingredients, ...r }) => ({ ...r, ingredients: (recette_ingredients || []).sort((a, b) => a.ordre - b.ordre) }));
+    },
+    async saveRecette(r, ingredients) {
+      let id = r.id;
+      const champs = { nom: r.nom, portions: r.portions, temps_min: r.temps_min, etapes: r.etapes };
+      if (id) ok(await sb.from("recettes").update(champs).eq("id", id));
+      else id = ok(await sb.from("recettes").insert({ ...champs, foyer_id: foyerId, source: "manuel" }).select("id").single()).id;
+      ok(await sb.from("recette_ingredients").delete().eq("recette_id", id));
+      if (ingredients.length) ok(await sb.from("recette_ingredients").insert(ingredients.map((i, n) =>
+        ({ recette_id: id, nom: i.nom, quantite: i.quantite, unite: i.unite, produit_id: i.produit_id || null, ordre: n }))));
+    },
+    async deleteRecette(id) { ok(await sb.from("recettes").delete().eq("id", id)); },
+    async cuisiner(recetteId, retraits) {
+      const ids = retraits.map((t) => t.produit_id);
+      const actuels = ids.length ? ok(await sb.from("produits").select("id, quantite").in("id", ids)) : [];
+      for (const t of retraits) {
+        const p = actuels.find((x) => x.id === t.produit_id);
+        if (p) ok(await sb.from("produits").update({ quantite: Math.max(0, +(+p.quantite - t.retrait).toFixed(2)), maj_le: new Date().toISOString() }).eq("id", p.id));
+        ok(await sb.from("recette_ingredients").update({ produit_id: t.produit_id }).eq("id", t.ingredient_id));
+      }
+      const r = ok(await sb.from("recettes").select("nb_fois").eq("id", recetteId).single());
+      ok(await sb.from("recettes").update({ derniere_fois: new Date().toISOString().slice(0, 10), nb_fois: (r.nb_fois || 0) + 1 }).eq("id", recetteId));
+    },
     subscribe(cb) {
       const ch = sb.channel("stock")
         .on("postgres_changes", { event: "*", schema: "public", table: "produits" }, cb)
         .on("postgres_changes", { event: "*", schema: "public", table: "emplacements" }, cb)
+        .on("postgres_changes", { event: "*", schema: "public", table: "recettes" }, cb)
         .subscribe();
       return () => sb.removeChannel(ch);
     },

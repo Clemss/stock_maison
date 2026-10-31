@@ -22,7 +22,7 @@ const bientotPerime = (p) => { const j = joursAvant(p.peremption); return j !== 
 // ------------------------------------------------------------------
 const S = {
   store: null, user: null, foyer: null,
-  emplacements: [], produits: [],
+  emplacements: [], produits: [], recettes: [],
   onglet: "stock", filtre: "tout", recherche: "",
   bas: new Set(), // ids sous le seuil (pour ne notifier qu'au franchissement)
 };
@@ -47,7 +47,8 @@ async function demarrer() {
 }
 
 async function charger() {
-  [S.emplacements, S.produits, S.foyer] = await Promise.all([S.store.listEmplacements(), S.store.listProduits(), S.store.getFoyer()]);
+  [S.emplacements, S.produits, S.foyer, S.recettes] = await Promise.all([S.store.listEmplacements(), S.store.listProduits(), S.store.getFoyer(),
+    S.store.listRecettes().then((r) => { S.recettesErreur = null; return r; }).catch((e) => { S.recettesErreur = e.message; return []; })]);
   verifierAlertes();
   rendre();
 }
@@ -134,13 +135,14 @@ function vueFoyer(erreur = "") {
 // ------------------------------------------------------------------
 function rendre() {
   const nbAlertes = S.produits.filter((p) => estBas(p) || bientotPerime(p)).length;
-  const vues = { stock: vueStock, racheter: vueRacheter, drive: vueDrive, reglages: vueReglages };
+  const vues = { stock: vueStock, racheter: vueRacheter, recettes: vueRecettes, drive: vueDrive, reglages: vueReglages };
   $("#app").innerHTML = `
     ${S.store.mode === "demo" ? `<div class="bandeau-demo">Mode démo : données sur ce téléphone uniquement</div>` : ""}
     <main class="contenu">${vues[S.onglet]()}</main>
     <nav class="barre-onglets" aria-label="Navigation">
       ${onglet("stock", "Stock", icStock)}
       ${onglet("racheter", "À racheter", icAlerte, nbAlertes)}
+      ${onglet("recettes", "Recettes", icRecette)}
       ${onglet("drive", "Drive", icPanier)}
       ${onglet("reglages", "Réglages", icReglages)}
     </nav>
@@ -270,7 +272,10 @@ function texteDrive(fd) {
     `Ce que j'ai déjà (à utiliser en priorité, ne pas racheter) :`,
     ...stock,
     ``,
-    `Propose les recettes, puis remplis mon panier sans dépasser le budget.`,
+    S.recettes.length ? `` : null,
+    S.recettes.length ? `Recettes déjà enregistrées dans l'appli (à varier) : ${S.recettes.map((r) => r.nom).join(", ")}` : null,
+    ``,
+    `Propose les recettes, enregistre-les dans l'appli Stock Maison, puis remplis mon panier sans dépasser le budget.`,
   ].filter((l) => l !== null).join("\n");
 }
 
@@ -335,6 +340,8 @@ function brancher() {
     if (t.dataset.edit) return feuilleProduit(S.produits.find((p) => p.id === t.dataset.edit));
     if (t.dataset.emp) return feuilleEmplacement(t.dataset.emp === "nouveau" ? null : S.emplacements.find((e) => e.id === t.dataset.emp));
     if (t.id === "btn-ajout" || t.id === "btn-ajout-vide") return feuilleProduit(null);
+    if (t.dataset.recette) return feuilleRecette(S.recettes.find((r) => r.id === t.dataset.recette));
+    if (t.id === "btn-ajout-recette") return feuilleEditionRecette(null);
     if (t.id === "btn-deco") return S.store.signOut();
     if (t.id === "btn-notif") { await Notification.requestPermission(); rendre(); return; }
     if (t.id === "btn-copier-liste") {
@@ -392,11 +399,13 @@ function ouvrirFeuille(html, onSubmit, onDelete) {
   $("[data-fermer]", sh).onclick = fermer;
   $("form", sh).onsubmit = async (ev) => {
     ev.preventDefault();
-    try { await onSubmit(new FormData(ev.target)); fermer(); await charger(); } catch (e) { toast(e.message); }
+    try { if ((await onSubmit(new FormData(ev.target), ev.submitter)) === "garder") return; fermer(); await charger(); } catch (e) { toast(e.message); }
   };
   const del = $("[data-supprimer]", sh);
   if (del) del.onclick = async () => { try { if (await onDelete()) { fermer(); await charger(); } } catch (e) { toast(e.message); } };
-  const premier = $("input", sh); if (premier && !premier.value) setTimeout(() => premier.focus(), 220);
+  const premier = $("input:not([data-pas-focus])", sh); if (premier && !premier.value) setTimeout(() => premier.focus(), 220);
+  sh.scrollTop = 0;
+  return { sh, fermer };
 }
 
 function feuilleProduit(p) {
@@ -450,11 +459,204 @@ function feuilleEmplacement(e) {
 }
 
 // ------------------------------------------------------------------
+//  Recettes
+// ------------------------------------------------------------------
+const norm = (t) => String(t ?? "").toLowerCase().replace(/œ/g, "oe").normalize("NFD").replace(/[̀-ͯ]/g, "")
+  .replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(Boolean).map((m) => (m.length > 3 ? m.replace(/[sx]$/, "") : m)).join(" ");
+const UNITES_RECETTE = { g: "g", gr: "g", gramme: "g", grammes: "g", kg: "kg", ml: "mL", cl: "cl", l: "L", litre: "L", litres: "L",
+  piece: "pièce", pieces: "pièce", "pièce": "pièce", "pièces": "pièce", paquet: "paquet", paquets: "paquet", boite: "boîte", boites: "boîte",
+  "boîte": "boîte", "boîtes": "boîte", pot: "pot", pots: "pot", sachet: "sachet", sachets: "sachet", bouteille: "bouteille", bouteilles: "bouteille",
+  tranche: "tranche", tranches: "tranche", gousse: "gousse", gousses: "gousse", cs: "c. à s.", cc: "c. à c." };
+
+// Convertit une quantité d'une unité vers une autre (null si impossible)
+function convertir(q, de, vers) {
+  if (q == null) return null;
+  if ((de || "pièce") === (vers || "pièce")) return +q;
+  const base = { g: ["g", 1], kg: ["g", 1000], mL: ["mL", 1], cl: ["mL", 10], L: ["mL", 1000] };
+  const a = base[de], b = base[vers];
+  return a && b && a[0] === b[0] ? (q * a[1]) / b[1] : null;
+}
+
+function produitPour(ing) {
+  const lie = ing.produit_id && S.produits.find((p) => p.id === ing.produit_id);
+  if (lie) return lie;
+  const n = norm(ing.nom);
+  if (!n) return null;
+  const candidats = S.produits.filter((p) => { const m = norm(p.nom); return m === n || m.startsWith(n + " ") || n.startsWith(m + " ") || m.includes(" " + n) || m.split(" ")[0] === n.split(" ")[0]; });
+  return candidats.sort((a, b) => (+b.quantite > 0) - (+a.quantite > 0) || (norm(a.nom) === n ? -1 : 1))[0] || null;
+}
+
+// État d'un ingrédient : ok | peu | inconnu | manque
+function etatIngredient(ing, facteur = 1) {
+  const p = produitPour(ing);
+  if (!p || +p.quantite <= 0) return { etat: "manque", p };
+  const besoin = convertir(ing.quantite == null ? null : ing.quantite * facteur, ing.unite, p.unite);
+  if (besoin == null) return { etat: "ok", p };
+  return { etat: +p.quantite >= besoin - 1e-9 ? "ok" : "peu", p, besoin };
+}
+
+function bilanRecette(r) {
+  // Les ingrédients sans quantité (sel, poivre, huile…) ne bloquent pas une recette
+  const etats = r.ingredients.filter((i) => i.quantite != null).map((i) => ({ i, ...etatIngredient(i) }));
+  const ok = etats.filter((e) => e.etat === "ok").length;
+  return { etats, ok, total: etats.length, manquants: etats.filter((e) => e.etat !== "ok") };
+}
+
+function vueRecettes() {
+  if (S.recettesErreur) return `
+    <header class="entete"><h1>Recettes</h1></header>
+    <div class="vide"><p>Les recettes ne sont pas encore activées dans la base de données. Relance le fichier <b>supabase/schema.sql</b> dans le SQL Editor de Supabase, puis rouvre l'appli.</p></div>`;
+  const liste = S.recettes.map((r) => ({ r, b: bilanRecette(r) }))
+    .sort((x, y) => (y.b.ok / (y.b.total || 1)) - (x.b.ok / (x.b.total || 1)) || x.r.nom.localeCompare(y.r.nom, "fr"));
+  const faisables = liste.filter((x) => x.b.total && x.b.ok === x.b.total);
+  const autres = liste.filter((x) => !(x.b.total && x.b.ok === x.b.total));
+  const carte = ({ r, b }) => `
+    <li><button class="recette" data-recette="${r.id}">
+      <span class="nom">${esc(r.nom)}</span>
+      <span class="meta">${[r.temps_min ? `${r.temps_min} min` : "", `${r.portions} pers.`].filter(Boolean).join(", ")}</span>
+      <span class="dispo">${b.total ? (b.ok === b.total ? `<span class="tag tag-ok">Tout est en stock</span>`
+        : `<span class="manque">Manque : ${b.manquants.map((m) => esc(m.i.nom.toLowerCase())).join(", ")}</span>`) : ""}</span>
+      ${b.total ? `<span class="jauge" style="--pc:${Math.round((b.ok / b.total) * 100)}%" aria-label="${b.ok} ingrédients sur ${b.total} en stock"></span>` : ""}
+    </button></li>`;
+  return `
+  <header class="entete entete-action">
+    <div><h1>Recettes</h1><p class="compte">${S.recettes.length} recette${S.recettes.length > 1 ? "s" : ""}, triées selon ce que vous avez</p></div>
+    <button class="btn-ajout" id="btn-ajout-recette">${icPlus}<span>Ajouter</span></button>
+  </header>
+  ${!liste.length ? `<div class="vide"><p>Aucune recette pour l'instant. Celles de tes drives s'ajouteront ici, ou ajoute les tiennes.</p></div>` : ""}
+  ${faisables.length ? `<section class="groupe"><h2>Faisables avec le stock</h2><ul class="liste-recettes">${faisables.map(carte).join("")}</ul></section>` : ""}
+  ${autres.length ? `<section class="groupe"><h2>${faisables.length ? "Il manque quelque chose" : "Toutes les recettes"}</h2><ul class="liste-recettes">${autres.map(carte).join("")}</ul></section>` : ""}`;
+}
+
+function ligneIngredient(ing, facteur) {
+  const { etat, p } = etatIngredient(ing, facteur);
+  const q = ing.quantite == null ? "" : `${fmtQ(+(ing.quantite * facteur).toFixed(2))} ${ing.unite && ing.unite !== "pièce" ? esc(ing.unite) : ""}`;
+  if (ing.quantite == null && etat === "manque") return `<li class="ing ing-base"><span class="point" aria-hidden="true"></span><span class="ing-nom">${esc(ing.nom)}</span><small>Basique, non suivi</small></li>`;
+  const info = etat === "manque" ? "Pas en stock" : `${etat === "peu" ? "Pas assez" : "En stock"} : ${fmtQ(p.quantite)} ${esc(p.unite)}`;
+  return `<li class="ing ing-${etat}"><span class="point" aria-hidden="true"></span><span class="ing-nom"><b>${q.trim()}</b> ${esc(ing.nom)}</span><small>${info}</small></li>`;
+}
+
+function feuilleRecette(r, portions = r.portions) {
+  const f = portions / r.portions;
+  const etapes = (r.etapes || "").split("\n").map((e) => e.trim()).filter(Boolean);
+  const { sh } = ouvrirFeuille(`
+    <form class="form">
+      <div class="feuille-tete"><h2>${esc(r.nom)}</h2><button type="button" class="lien" data-fermer>Fermer</button></div>
+      <p class="discret sans-marge">${[r.temps_min ? `${r.temps_min} min` : "", r.nb_fois ? `cuisinée ${r.nb_fois} fois, la dernière le ${new Date(r.derniere_fois).toLocaleDateString("fr-FR")}` : "jamais cuisinée"].filter(Boolean).join(", ")}</p>
+      <div class="portions"><span>Portions</span>
+        <div class="compteur"><button type="button" data-portions="-1" aria-label="Moins de portions">−</button><output><b>${portions}</b></output><button type="button" data-portions="1" aria-label="Plus de portions">+</button></div>
+      </div>
+      <h3>Ingrédients</h3>
+      <ul class="ingredients">${r.ingredients.map((i) => ligneIngredient(i, f)).join("")}</ul>
+      ${etapes.length ? `<h3>Préparation</h3><ol class="etapes">${etapes.map((e) => `<li>${esc(e)}</li>`).join("")}</ol>` : ""}
+      <button class="btn">J'ai cuisiné cette recette</button>
+      <button type="button" class="btn btn-sec" data-modifier>Modifier la recette</button>
+      <button type="button" class="btn btn-danger" data-supprimer>Supprimer la recette</button>
+    </form>`,
+    async () => { feuilleCuisine(r, portions); return "garder"; },
+    async () => { if (!confirm(`Supprimer la recette « ${r.nom} » ?`)) return false; await S.store.deleteRecette(r.id); toast("Recette supprimée"); return true; });
+  sh.querySelectorAll("[data-portions]").forEach((b) => (b.onclick = () => feuilleRecette(r, Math.max(1, portions + +b.dataset.portions))));
+  $("[data-modifier]", sh).onclick = () => feuilleEditionRecette(r);
+}
+
+// Après avoir cuisiné : on propose quoi retirer du stock, modifiable
+function feuilleCuisine(r, portions) {
+  const f = portions / r.portions;
+  const produitsTries = [...S.produits].sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+  const suggestion = (ing, p) => {
+    if (!p) return 0;
+    const q = convertir(ing.quantite == null ? null : ing.quantite * f, ing.unite, p.unite);
+    return q == null ? 0 : Math.min(+p.quantite, +q.toFixed(2));
+  };
+  const lignes = r.ingredients.map((ing, n) => {
+    const p = produitPour(ing);
+    return `
+    <li class="retrait" data-n="${n}">
+      <div class="retrait-tete"><b>${esc(ing.nom)}</b>${ing.quantite != null ? `<small>recette : ${fmtQ(+(ing.quantite * f).toFixed(2))} ${esc(ing.unite || "")}</small>` : ""}</div>
+      <div class="retrait-champs">
+        <select name="produit-${n}" aria-label="Produit du stock pour ${esc(ing.nom)}">
+          <option value="">Pas dans le stock</option>
+          ${produitsTries.map((x) => `<option value="${x.id}" ${p?.id === x.id ? "selected" : ""}>${esc(x.nom)} (${fmtQ(x.quantite)} ${esc(x.unite)})</option>`).join("")}
+        </select>
+        <label class="retrait-q"><input name="retrait-${n}" type="number" step="any" min="0" value="${suggestion(ing, p)}" inputmode="decimal" data-pas-focus aria-label="Quantité à retirer"><span>${esc(p?.unite ?? "")}</span></label>
+      </div>
+    </li>`;
+  }).join("");
+  const { sh } = ouvrirFeuille(`
+    <form class="form">
+      <div class="feuille-tete"><h2>Retirer du stock</h2><button type="button" class="lien" data-fermer>Annuler</button></div>
+      <p class="discret sans-marge">${esc(r.nom)}, ${portions} portion${portions > 1 ? "s" : ""}. Vérifie les quantités utilisées : elles seront retirées du stock.</p>
+      <ul class="retraits">${lignes}</ul>
+      <button class="btn">Retirer du stock</button>
+    </form>`,
+    async (d) => {
+      const retraits = r.ingredients.map((ing, n) => ({ ingredient_id: ing.id, produit_id: d.get(`produit-${n}`), retrait: +d.get(`retrait-${n}`) || 0 }))
+        .filter((t) => t.produit_id);
+      await S.store.cuisiner(r.id, retraits);
+      const n = retraits.filter((t) => t.retrait > 0).length;
+      toast(n ? `Stock mis à jour : ${n} produit${n > 1 ? "s" : ""}` : "Recette notée comme cuisinée");
+    });
+  sh.querySelectorAll("select[name^=produit-]").forEach((sel) => (sel.onchange = () => {
+    const n = sel.name.split("-")[1], ing = r.ingredients[n], p = S.produits.find((x) => x.id === sel.value);
+    const li = sel.closest(".retrait");
+    $("input", li).value = suggestion(ing, p);
+    $(".retrait-q span", li).textContent = p?.unite ?? "";
+  }));
+}
+
+// Texte « 250 g pâtes » <-> ingrédient
+function lireIngredient(ligne) {
+  const t = ligne.trim().replace(/^[-•*]\s*/, "");
+  if (!t) return null;
+  const m = t.match(/^(\d+\s*\/\s*\d+|\d+(?:[.,]\d+)?)\s*(.*)$/);
+  if (!m) return { nom: t, quantite: null, unite: null };
+  let q = m[1].includes("/") ? m[1].split("/").map(Number).reduce((a, b) => a / b) : +m[1].replace(",", ".");
+  let reste = m[2];
+  const mots = reste.split(/\s+/);
+  const u = UNITES_RECETTE[(mots[0] || "").toLowerCase().replace(/\.$/, "")];
+  let unite = "pièce";
+  if (u) { unite = u; reste = mots.slice(1).join(" "); }
+  reste = reste.replace(/^(de |d'|d’)/i, "").trim();
+  if (unite === "cl") { unite = "mL"; q = q * 10; }
+  return { nom: reste ? reste[0].toUpperCase() + reste.slice(1) : t, quantite: q, unite };
+}
+const ecrireIngredient = (i) => (i.quantite == null ? i.nom : `${fmtQ(i.quantite)}${i.unite && i.unite !== "pièce" ? " " + i.unite : ""} ${i.nom.toLowerCase()}`);
+
+function feuilleEditionRecette(r) {
+  const n = !r;
+  r = r || { nom: "", portions: S.foyer.nb_personnes || 2, temps_min: "", etapes: "", ingredients: [] };
+  ouvrirFeuille(`
+    <form class="form">
+      <div class="feuille-tete"><h2>${n ? "Ajouter une recette" : "Modifier la recette"}</h2><button type="button" class="lien" data-fermer>Fermer</button></div>
+      <label>Nom<input name="nom" required value="${esc(r.nom)}" placeholder="ex : Gratin de pâtes"></label>
+      <div class="duo">
+        <label>Portions<input name="portions" type="number" min="1" value="${r.portions}" inputmode="numeric"></label>
+        <label>Temps (min)<input name="temps_min" type="number" min="0" value="${r.temps_min ?? ""}" inputmode="numeric"></label>
+      </div>
+      <label><span>Ingrédients <small>un par ligne, ex : 250 g pâtes</small></span>
+        <textarea name="ingredients" rows="6" placeholder="250 g pâtes&#10;2 steaks hachés&#10;1 pot sauce tomate">${esc(r.ingredients.map(ecrireIngredient).join("\n"))}</textarea></label>
+      <label><span>Préparation <small>une étape par ligne</small></span>
+        <textarea name="etapes" rows="5">${esc(r.etapes || "")}</textarea></label>
+      <button class="btn">${n ? "Ajouter la recette" : "Enregistrer"}</button>
+    </form>`,
+    async (d) => {
+      const ings = d.get("ingredients").split("\n").map(lireIngredient).filter(Boolean).map((i) => {
+        const ancien = r.ingredients.find((a) => norm(a.nom) === norm(i.nom));
+        return { ...i, id: ancien?.id, produit_id: ancien?.produit_id ?? null };
+      });
+      await S.store.saveRecette({ ...(n ? {} : { id: r.id }), nom: d.get("nom").trim(), portions: +d.get("portions") || 1,
+        temps_min: +d.get("temps_min") || null, etapes: d.get("etapes").trim() }, ings);
+      toast(n ? "Recette ajoutée" : "Recette enregistrée");
+    });
+}
+
+// ------------------------------------------------------------------
 //  Icônes
 // ------------------------------------------------------------------
 const svg = (p) => `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
 const icStock = svg('<rect x="5" y="2.5" width="14" height="19" rx="2.5"/><path d="M5 9.5h14M8.5 5.5v1.5M8.5 12.5v3"/>');
 const icAlerte = svg('<path d="M12 3.5 2.8 19.5h18.4z"/><path d="M12 10v4M12 17h.01"/>');
+const icRecette = svg('<path d="M4 11h16v2a7 7 0 0 1-7 7h-2a7 7 0 0 1-7-7z"/><path d="M2.5 11h19M9 7.5c0-1.5 1-1.5 1-3M13.5 7.5c0-1.5 1-1.5 1-3"/>');
 const icPanier = svg('<path d="M3 4h2.2l2.3 11h10.8l2-8H6.3"/><circle cx="9" cy="19.5" r="1.3"/><circle cx="17" cy="19.5" r="1.3"/>');
 const icReglages = svg('<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>');
 const icPlus = svg('<path d="M12 5v14M5 12h14"/>');
