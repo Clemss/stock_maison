@@ -1,0 +1,204 @@
+/* =============================================================
+   Stock Maison — couleurs par température de stockage
+   ============================================================= */
+:root {
+  --papier: #F2F6F5;      /* blanc givré */
+  --surface: #FFFFFF;
+  --encre: #17302C;       /* vert sapin très sombre */
+  --encre-2: #5A6F6B;
+  --trait: #DCE5E3;
+  --frigo: #2F8A78;       /* frigo : vert d'eau */
+  --congel: #3B6CB3;      /* congélateur : bleu glace */
+  --placard: #A8722F;     /* placards : chêne */
+  --autre: #7A6F8E;
+  --rouge: #C4362C;       /* stock bas */
+  --ambre: #B7791F;       /* date proche */
+  --accent: var(--frigo);
+  --rayon: 14px;
+  --nav-h: 64px;
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sat: env(safe-area-inset-top, 0px);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --papier: #0F1716; --surface: #182321; --encre: #E4EEEB; --encre-2: #93A8A3; --trait: #263431;
+    --frigo: #4DB39E; --congel: #6E9BE0; --placard: #D29A53; --autre: #A799C2; --rouge: #EF6A5E; --ambre: #E0A93F;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--papier); color: var(--encre);
+  font: 400 17px/1.4 "Bricolage Grotesque", system-ui, -apple-system, sans-serif;
+  font-optical-sizing: auto;
+  -webkit-tap-highlight-color: transparent;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2.5px solid var(--congel); outline-offset: 2px; }
+h1, h2 { margin: 0; }
+
+.contenu { padding: calc(var(--sat) + 18px) 16px calc(var(--nav-h) + var(--sab) + 32px); max-width: 640px; margin: 0 auto; }
+.bandeau-demo { position: sticky; top: 0; z-index: 5; padding: calc(var(--sat) + 6px) 16px 6px; font-size: 13px; text-align: center; background: var(--encre); color: var(--papier); }
+.bandeau-demo + .contenu { padding-top: 18px; }
+
+/* ---------- En-tête ---------- */
+.entete { margin-bottom: 14px; }
+.entete h1 { font-size: 34px; line-height: 1.05; font-weight: 800; letter-spacing: -0.02em; font-variation-settings: "opsz" 96; }
+.compte { margin: 4px 0 0; color: var(--encre-2); font-size: 15px; }
+
+/* ---------- Alerte ---------- */
+.alerte {
+  display: flex; gap: 10px; align-items: center; width: 100%; text-align: left;
+  margin: 0 0 14px; padding: 12px 14px; border: 0; border-radius: var(--rayon);
+  background: color-mix(in srgb, var(--rouge) 12%, var(--surface)); color: var(--rouge); font-weight: 600; font-size: 15px;
+}
+.alerte svg { flex: none; }
+
+/* ---------- Filtres par emplacement ---------- */
+.filtres { display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px 12px; padding: 2px 16px; scrollbar-width: none; }
+.filtres::-webkit-scrollbar { display: none; }
+.puce {
+  --c: var(--encre); flex: none; padding: 8px 14px; border-radius: 999px; font-size: 15px; font-weight: 500;
+  border: 1.5px solid var(--trait); background: var(--surface); white-space: nowrap;
+}
+.puce.active { background: var(--c); border-color: var(--c); color: var(--papier); }
+.t-frigo { --c: var(--frigo); }
+.t-congelateur { --c: var(--congel); }
+.t-placard { --c: var(--placard); }
+.t-autre { --c: var(--autre); }
+
+.recherche { display: flex; align-items: center; gap: 8px; padding: 0 12px; margin-bottom: 8px; border-radius: 12px; background: var(--surface); border: 1.5px solid var(--trait); color: var(--encre-2); }
+.recherche input { flex: 1; min-width: 0; border: 0; background: none; padding: 11px 0; color: var(--encre); outline: none; }
+.recherche:focus-within { border-color: var(--congel); }
+
+/* ---------- Liste des produits ---------- */
+.groupe { margin-top: 22px; }
+.groupe > h2 { font-size: 15px; font-weight: 600; color: var(--encre-2); margin: 0 0 8px 2px; }
+.liste { list-style: none; margin: 0; padding: 0; background: var(--surface); border-radius: var(--rayon); overflow: hidden; border: 1px solid var(--trait); }
+.liste + .btn { margin-top: 12px; }
+
+.produit { display: flex; align-items: center; gap: 8px; padding: 10px 10px 10px 0; border-left: 5px solid var(--c, var(--trait)); }
+.produit + .produit { border-top: 1px solid var(--trait); }
+.produit-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 4px 0 4px 12px; border: 0; background: none; text-align: left; }
+.nom { font-weight: 600; font-size: 17px; overflow-wrap: anywhere; }
+.meta { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; font-size: 13px; color: var(--encre-2); }
+.tag { font-size: 12px; font-weight: 600; padding: 1px 7px; border-radius: 6px; background: color-mix(in srgb, var(--encre-2) 12%, transparent); }
+.tag-bas { background: color-mix(in srgb, var(--rouge) 14%, transparent); color: var(--rouge); }
+.tag-date { background: color-mix(in srgb, var(--ambre) 16%, transparent); color: var(--ambre); }
+
+/* Le compteur : l'élément fort de l'interface */
+.compteur { flex: none; display: flex; align-items: center; gap: 2px; }
+.compteur button {
+  width: 40px; height: 40px; border-radius: 50%; border: 0; font-size: 22px; font-weight: 500; line-height: 1;
+  background: color-mix(in srgb, var(--c, var(--encre)) 12%, transparent); color: var(--c, var(--encre));
+  display: grid; place-items: center; transition: transform .08s;
+}
+.compteur button:active { transform: scale(.88); }
+.compteur output { min-width: 52px; text-align: center; display: flex; flex-direction: column; line-height: 1; }
+.compteur b { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.compteur small { font-size: 11px; color: var(--encre-2); margin-top: 3px; }
+.est-bas .compteur b { color: var(--rouge); }
+
+.vide { text-align: center; padding: 40px 16px; color: var(--encre-2); }
+.vide .btn { max-width: 260px; margin: 12px auto 0; }
+.discret { color: var(--encre-2); font-size: 15px; margin: 10px 2px; }
+
+/* ---------- Boutons et formulaires ---------- */
+.btn {
+  display: block; width: 100%; padding: 14px 16px; border-radius: 12px; border: 0; text-align: center; text-decoration: none;
+  background: var(--encre); color: var(--papier); font-weight: 600; font-size: 17px;
+}
+.btn:active { opacity: .85; }
+.btn-sec { background: var(--surface); color: var(--encre); border: 1.5px solid var(--trait); }
+.btn-danger { background: none; color: var(--rouge); border: 1.5px solid color-mix(in srgb, var(--rouge) 35%, transparent); }
+.lien { border: 0; background: none; color: var(--congel); font-weight: 600; padding: 6px 4px; }
+
+.form { display: flex; flex-direction: column; gap: 12px; }
+.form label { display: flex; flex-direction: column; gap: 5px; font-size: 14px; font-weight: 600; color: var(--encre-2); }
+.form label small { font-weight: 400; }
+.form input:not([type=checkbox]):not([type=radio]), .form select, .form textarea {
+  width: 100%; padding: 12px; border-radius: 10px; border: 1.5px solid var(--trait); background: var(--surface); color: var(--encre);
+  font-size: 17px; font-weight: 400; appearance: none; -webkit-appearance: none;
+}
+.form select { background-image: linear-gradient(45deg, transparent 50%, var(--encre-2) 50%), linear-gradient(135deg, var(--encre-2) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 52%, calc(100% - 13px) 52%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 32px; }
+.form input:focus, .form select:focus, .form textarea:focus { border-color: var(--congel); outline: none; }
+.form .btn { margin-top: 4px; }
+.duo { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.erreur { color: var(--rouge); font-weight: 600; margin: 0; }
+
+.interrupteur { flex-direction: row !important; align-items: center; gap: 12px !important; padding: 10px 12px; border-radius: 10px; background: var(--surface); border: 1.5px solid var(--trait); }
+.interrupteur span { display: flex; flex-direction: column; color: var(--encre); font-size: 16px; }
+.interrupteur small { color: var(--encre-2); font-size: 13px; }
+.interrupteur input { appearance: none; -webkit-appearance: none; flex: none; width: 50px; height: 30px; border-radius: 99px; background: var(--trait); position: relative; transition: background .15s; margin: 0; }
+.interrupteur input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .15s; }
+.interrupteur input:checked { background: var(--frigo); }
+.interrupteur input:checked::after { transform: translateX(20px); }
+
+.icones { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.icones legend { font-size: 14px; font-weight: 600; color: var(--encre-2); margin-bottom: 5px; padding: 0; }
+.icones label { display: block; }
+.icones input { position: absolute; opacity: 0; }
+.icones span { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px; font-size: 22px; border: 1.5px solid var(--trait); background: var(--surface); }
+.icones input:checked + span { border-color: var(--encre); border-width: 2.5px; }
+.icones input:focus-visible + span { outline: 2.5px solid var(--congel); }
+
+.ligne-emp { display: flex; justify-content: space-between; align-items: center; padding: 10px 10px 10px 14px; border-left: 5px solid var(--c); }
+.ligne-emp + .ligne-emp { border-top: 1px solid var(--trait); }
+.liste + .btn-sec { margin-top: 10px; }
+.code-invit { font-size: 40px; font-weight: 800; letter-spacing: .14em; margin: 4px 2px; font-variant-numeric: tabular-nums; }
+code { font-size: .9em; }
+
+/* ---------- Écrans de connexion ---------- */
+.ecran-centre { max-width: 420px; margin: 0 auto; padding: calc(var(--sat) + 48px) 20px 40px; }
+.ecran-centre h1 { font-size: 36px; font-weight: 800; letter-spacing: -0.02em; }
+.sous { color: var(--encre-2); margin: 6px 0 24px; }
+.logo-grand { margin-bottom: 12px; }
+.ou { text-align: center; color: var(--encre-2); margin: 22px 0; }
+.code { text-transform: uppercase; letter-spacing: .2em; font-weight: 700 !important; }
+
+/* ---------- Barre d'onglets ---------- */
+.barre-onglets {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: grid; grid-template-columns: repeat(4, 1fr);
+  padding: 4px 4px var(--sab); background: color-mix(in srgb, var(--papier) 88%, transparent);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid var(--trait);
+}
+.onglet { position: relative; height: var(--nav-h); border: 0; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11.5px; font-weight: 500; color: var(--encre-2); }
+.onglet.actif { color: var(--encre); font-weight: 700; }
+.pastille { position: absolute; top: 6px; left: calc(50% + 6px); min-width: 19px; height: 19px; padding: 0 5px; border-radius: 99px; background: var(--rouge); color: #fff; font-size: 11.5px; display: grid; place-items: center; }
+
+.entete-action { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.btn-ajout { flex: none; display: flex; align-items: center; gap: 6px; margin-top: 2px; padding: 10px 16px 10px 12px; border-radius: 999px; border: 0; background: var(--encre); color: var(--papier); font-weight: 600; font-size: 16px; }
+.btn-ajout svg { width: 20px; height: 20px; stroke-width: 2.4; }
+.form label > span small { font-weight: 400; }
+.form:has(input[name=toujours_stock]:not(:checked)) .champ-seuil { display: none; }
+.fab {
+  position: fixed; right: max(16px, calc(50% - 304px)); bottom: calc(var(--nav-h) + var(--sab) + 18px); z-index: 9;
+  width: 60px; height: 60px; border-radius: 50%; border: 0; background: var(--encre); color: var(--papier);
+  display: grid; place-items: center; box-shadow: 0 6px 18px color-mix(in srgb, var(--encre) 35%, transparent);
+}
+.fab svg { width: 28px; height: 28px; stroke-width: 2.4; }
+
+/* ---------- Feuille du bas ---------- */
+.sheet-backdrop { position: fixed; inset: 0; z-index: 20; background: rgba(10, 20, 18, .4); }
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; max-height: 92vh; overflow-y: auto; overscroll-behavior: contain;
+  max-width: 640px; margin: 0 auto; padding: 8px 16px calc(var(--sab) + 20px);
+  background: var(--papier); border-radius: 20px 20px 0 0; transform: translateY(100%); transition: transform .22s ease-out;
+}
+.sheet.ouverte { transform: none; }
+.poignee { width: 40px; height: 5px; border-radius: 3px; background: var(--trait); margin: 2px auto 10px; }
+.feuille-tete { display: flex; justify-content: space-between; align-items: center; }
+.feuille-tete h2 { font-size: 22px; font-weight: 700; }
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(var(--nav-h) + var(--sab) + 20px); transform: translateX(-50%); z-index: 30;
+  max-width: calc(100% - 32px); padding: 11px 16px; border-radius: 12px; background: var(--encre); color: var(--papier);
+  font-size: 15px; font-weight: 500; text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) { .sheet, .compteur button, .interrupteur input, .interrupteur input::after { transition: none; } }
