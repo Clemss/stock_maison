@@ -87,7 +87,7 @@ function demoStore() {
 //  MODE SUPABASE — partagé entre les téléphones du foyer
 // ------------------------------------------------------------------
 async function supabaseStore(url, key) {
-  const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm");
+  const { createClient } = await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm");
   const sb = createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true } });
   let foyerId = null;
   const ok = ({ data, error }) => { if (error) throw new Error(traduire(error.message)); return data; };
