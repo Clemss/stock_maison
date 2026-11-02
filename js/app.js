@@ -247,7 +247,7 @@ function etatDrive() {
 }
 function nouveauDrive() {
   const f = S.foyer || {};
-  return { etape: 1, params: { personnes: f.nb_personnes || 2, repas: 5, budget: +f.budget_drive || 50, refuses: (f.aliments_refuses || []).join(", "), envies: "" },
+  return { etape: 1, params: { personnes: f.nb_personnes || 2, repas: 5, budget: +f.budget_drive || 50, refuses: (f.aliments_refuses || []).join(", "), envies: "", sansVege: true },
     selection: [], vus: [], decoches: [], forces: [], ajouts: {}, texte: "" };
 }
 function sauverDrive() { try { localStorage.setItem(CLE_DRIVE, JSON.stringify(S.drive)); } catch {} }
@@ -276,7 +276,8 @@ function noteRecette(r, D, choisies) {
 }
 function candidats(D, exclure = []) {
   const refuses = refusesDe(D);
-  return S.recettes.filter((r) => !exclure.includes(r.id) && recetteAutorisee(r, refuses));
+  const sansVege = D.params.sansVege !== false;
+  return S.recettes.filter((r) => !exclure.includes(r.id) && recetteAutorisee(r, refuses) && !(sansVege && (r.tags || []).includes("végé")));
 }
 function meilleure(D, choisies, exclure) {
   const c = candidats(D, exclure);
@@ -287,7 +288,7 @@ function meilleure(D, choisies, exclure) {
 function lancerSelection(fd) {
   const D = etatDrive();
   D.params = { personnes: +fd.get("personnes") || 2, repas: Math.max(1, +fd.get("repas") || 1), budget: +fd.get("budget") || 50,
-    refuses: fd.get("refuses").trim(), envies: fd.get("envies").trim() };
+    refuses: fd.get("refuses").trim(), envies: fd.get("envies").trim(), sansVege: fd.get("sansVege") === "on" };
   // Garde les aliments refusés pour la prochaine fois, sur les deux téléphones
   const liste = D.params.refuses.split(",").map((x) => x.trim()).filter(Boolean);
   if (liste.join(",") !== (S.foyer.aliments_refuses || []).join(",")) S.store.updateFoyer({ aliments_refuses: liste }).then((f) => (S.foyer = f)).catch(() => {});
@@ -326,7 +327,7 @@ function actionDrive(action, i) {
     D.texte = texteDrive(D); D.etape = 4; sauverDrive(); rendre(); scrollTo(0, 0);
     copier(D.texte, "Demande copiée : colle-la dans Claude");
   } else if (action === "copier") copier(D.texte, "Demande copiée");
-  else if (action === "nouveau") { S.drive = nouveauDrive(); sauverDrive(); rendre(); scrollTo(0, 0); }
+  else if (action === "nouveau") { const params = D.params; S.drive = { ...nouveauDrive(), params }; sauverDrive(); rendre(); scrollTo(0, 0); }
 }
 
 function feuilleChoixRecette(i) {
@@ -460,6 +461,8 @@ function vueDrive() {
     <label>Budget max (€)<input name="budget" type="number" min="5" step="1" value="${p.budget}" inputmode="decimal"></label>
     <label><span>Aliments refusés <small>séparés par des virgules</small></span>
       <input name="refuses" value="${esc(p.refuses)}" placeholder="ex : champignons, olives"></label>
+    <label class="interrupteur"><input type="checkbox" name="sansVege" ${p.sansVege !== false ? "checked" : ""}>
+      <span>Éviter les plats végé<small>Propose seulement des repas avec viande ou poisson</small></span></label>
     <label><span>Envies ou contraintes <small>facultatif, transmis à Claude</small></span>
       <textarea name="envies" rows="2" placeholder="ex : repas rapides le soir">${esc(p.envies)}</textarea></label>
     <button class="btn">Proposer des repas</button>
