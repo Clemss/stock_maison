@@ -280,3 +280,24 @@ code { font-size: .9em; }
 .choix-ligne .meta { font-size: 13px; color: var(--encre-2); }
 .choix-ligne.actuelle { border-color: var(--frigo); border-width: 2px; }
 .texte-drive { width: 100%; margin-bottom: 12px; padding: 12px; border-radius: 12px; border: 1.5px solid var(--trait); background: var(--surface); color: var(--encre); font: 14px/1.5 ui-monospace, Menlo, monospace; resize: vertical; }
+
+/* Recherche placée dans une feuille (formulaire) */
+.form label.recherche { flex-direction: row; align-items: center; gap: 8px; color: var(--encre-2); }
+.form label.recherche input { border: 0 !important; padding: 11px 0 !important; background: none !important; }
+
+/* Ajouts depuis le stock */
+.article.decoche-doux .article-texte b, .article.decoche-doux .article-q { color: var(--encre-2); }
+.ajout-groupe h3 { font-size: 15px !important; color: var(--encre-2); margin: 6px 0 6px 2px !important; font-weight: 600; }
+.ajout-ligne { display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 12px; }
+.ajout-ligne + .ajout-ligne { border-top: 1px solid var(--trait); }
+.form label.ajout-coche { flex: 1; min-width: 0; flex-direction: row; align-items: center; gap: 10px; color: var(--encre); font-size: 16px; font-weight: 400; cursor: pointer; }
+.ajout-coche > span { display: flex; flex-direction: column; min-width: 0; }
+.ajout-coche b { font-weight: 600; overflow-wrap: anywhere; }
+.ajout-coche small { color: var(--encre-2); font-size: 13px; font-weight: 400; }
+.ajout-coche input { appearance: none; -webkit-appearance: none; flex: none; width: 24px; height: 24px; margin: 0; border-radius: 7px; border: 2px solid var(--trait); background: var(--surface); display: grid; place-items: center; }
+.ajout-coche input:checked { background: var(--frigo); border-color: var(--frigo); }
+.ajout-coche input:checked::after { content: ""; width: 6px; height: 11px; border: solid #fff; border-width: 0 2.5px 2.5px 0; transform: translateY(-1px) rotate(45deg); }
+.form label.ajout-q { flex: none; flex-direction: row; align-items: center; gap: 4px; width: 112px; }
+.form .ajout-q input { padding: 8px !important; font-size: 16px !important; }
+.ajout-q span { font-size: 12px; font-weight: 500; min-width: 30px; }
+.barre-feuille { position: sticky; bottom: calc(-20px - var(--sab)); margin: 0 -16px calc(-20px - var(--sab)); padding: 10px 16px calc(var(--sab) + 14px); background: var(--papier); border-top: 1px solid var(--trait); }

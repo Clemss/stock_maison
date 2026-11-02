@@ -238,6 +238,8 @@ function etatDrive() {
     try { S.drive = JSON.parse(localStorage.getItem(CLE_DRIVE)); } catch { S.drive = null; }
     if (!S.drive || !S.drive.params) S.drive = nouveauDrive();
   }
+  S.drive.forces ??= []; S.drive.ajouts ??= {};
+  for (const id of Object.keys(S.drive.ajouts)) if (S.produits.length && !S.produits.some((p) => p.id === id)) delete S.drive.ajouts[id];
   // Retire les recettes supprimées entre-temps
   const ids = new Set(S.recettes.map((r) => r.id));
   if (S.recettes.length) S.drive.selection = S.drive.selection.filter((id) => ids.has(id));
@@ -246,7 +248,7 @@ function etatDrive() {
 function nouveauDrive() {
   const f = S.foyer || {};
   return { etape: 1, params: { personnes: f.nb_personnes || 2, repas: 5, budget: +f.budget_drive || 50, refuses: (f.aliments_refuses || []).join(", "), envies: "" },
-    selection: [], vus: [], decoches: [], texte: "" };
+    selection: [], vus: [], decoches: [], forces: [], ajouts: {}, texte: "" };
 }
 function sauverDrive() { try { localStorage.setItem(CLE_DRIVE, JSON.stringify(S.drive)); } catch {} }
 
@@ -290,7 +292,7 @@ function lancerSelection(fd) {
   const liste = D.params.refuses.split(",").map((x) => x.trim()).filter(Boolean);
   if (liste.join(",") !== (S.foyer.aliments_refuses || []).join(",")) S.store.updateFoyer({ aliments_refuses: liste }).then((f) => (S.foyer = f)).catch(() => {});
   D.alea = Object.fromEntries(S.recettes.map((r) => [r.id, Math.random() * 0.5]));
-  D.selection = []; D.vus = []; D.decoches = [];
+  D.selection = []; D.vus = []; D.decoches = []; D.forces = [];
   const choisies = [];
   for (let k = 0; k < D.params.repas; k++) {
     const r = meilleure(D, choisies, choisies.map((x) => x.id));
@@ -313,6 +315,7 @@ function actionDrive(action, i) {
     if (!r) return toast("Pas d'autre recette disponible");
     D.selection[+i] = r.id; D.vus.push(r.id); sauverDrive(); rendre();
   } else if (action === "choisir") feuilleChoixRecette(+i);
+  else if (action === "ajouter-stock") feuilleAjoutStock();
   else if (action === "retirer") { D.selection.splice(+i, 1); sauverDrive(); rendre(); }
   else if (action === "ajouter") {
     const r = meilleure(D, sel(), [...D.selection]);
@@ -351,6 +354,47 @@ function feuilleChoixRecette(i) {
   };
 }
 
+// Feuille : cocher des produits du stock à racheter, avec la quantité
+function feuilleAjoutStock() {
+  const D = etatDrive();
+  const parDefaut = (p) => (+p.seuil_min > +p.quantite ? +(+p.seuil_min - +p.quantite).toFixed(2) : p.unite === "g" ? 500 : p.unite === "mL" ? 1000 : p.unite === "kg" || p.unite === "L" ? 1 : 1);
+  const groupes = S.emplacements.map((e) => ({ e, ps: S.produits.filter((p) => p.emplacement_id === e.id) }))
+    .concat([{ e: { nom: "Sans emplacement", icone: "📦" }, ps: S.produits.filter((p) => !S.emplacements.some((e) => e.id === p.emplacement_id)) }])
+    .filter((g) => g.ps.length);
+  const ligne = (p) => {
+    const q = D.ajouts[p.id];
+    return `
+    <li class="ajout-ligne" data-nom="${esc(norm(p.nom))}">
+      <label class="ajout-coche"><input type="checkbox" name="c-${p.id}" ${q ? "checked" : ""} data-pas-focus>
+        <span><b>${esc(p.nom)}</b><small>en stock : ${qte(+p.quantite, p.unite)}${estBas(p) ? ", sous le seuil" : ""}</small></span></label>
+      <label class="ajout-q"><input type="number" name="q-${p.id}" min="0" step="any" value="${q ?? parDefaut(p)}" inputmode="decimal" data-pas-focus aria-label="Quantité à acheter"><span>${esc(p.unite)}</span></label>
+    </li>`;
+  };
+  const { sh, fermer } = ouvrirFeuille(`
+    <form class="form">
+      <div class="feuille-tete"><h2>Ajouter depuis le stock</h2><button type="button" class="lien" data-fermer>Fermer</button></div>
+      <label class="recherche">${icLoupe}<input id="cherche-stock" type="search" placeholder="Chercher un produit" data-pas-focus aria-label="Chercher un produit"></label>
+      ${groupes.map((g) => `<section class="ajout-groupe"><h3>${g.e.icone} ${esc(g.e.nom)}</h3><ul class="liste ajouts">${g.ps.sort((a, b) => a.nom.localeCompare(b.nom, "fr")).map(ligne).join("")}</ul></section>`).join("")}
+      <div class="barre-feuille"><button class="btn">Ajouter au drive</button></div>
+    </form>`,
+    async (d) => {
+      const ajouts = {};
+      for (const p of S.produits) if (d.get("c-" + p.id) === "on") ajouts[p.id] = Math.max(+d.get("q-" + p.id) || 0, 0) || parDefaut(p);
+      D.ajouts = ajouts; D.decoches = D.decoches.filter((k) => !k.startsWith("a:"));
+      sauverDrive(); fermer(); rendre();
+      const n = Object.keys(ajouts).length;
+      toast(n ? `${n} produit${n > 1 ? "s" : ""} ajouté${n > 1 ? "s" : ""} au drive` : "Aucun produit ajouté");
+      return "garder";
+    });
+  // Modifier la quantité coche automatiquement le produit
+  sh.querySelectorAll(".ajout-q input").forEach((inp) => (inp.oninput = () => { inp.closest("li").querySelector(".ajout-coche input").checked = +inp.value > 0; }));
+  $("#cherche-stock", sh).oninput = (ev) => {
+    const q = norm(ev.target.value);
+    sh.querySelectorAll(".ajout-ligne").forEach((li) => (li.hidden = q && !li.dataset.nom.includes(q)));
+    sh.querySelectorAll(".ajout-groupe").forEach((g) => (g.hidden = ![...g.querySelectorAll(".ajout-ligne")].some((li) => !li.hidden)));
+  };
+}
+
 // Liste de courses : besoins des recettes moins le stock, plus les essentiels sous le seuil
 function listeCourses(D) {
   const recettes = D.selection.map((id) => S.recettes.find((r) => r.id === id)).filter(Boolean);
@@ -381,7 +425,11 @@ function listeCourses(D) {
   const essentiels = S.produits.filter(estBas).filter((p) => !acheter.some((a) => a.produit?.id === p.id))
     .map((p) => ({ cle: "e:" + p.id, nom: p.nom, essentiel: true, reste: Math.max(+p.seuil_min - +p.quantite, 0) || 1, unite: p.unite }));
   const tri = (a, b) => a.nom.localeCompare(b.nom, "fr");
-  return { recettes, acheter: acheter.sort(tri), essentiels, enStock: enStock.sort(tri), basiques: [...basiques].sort((a, b) => a.localeCompare(b, "fr")) };
+  const ajouts = Object.entries(D.ajouts).map(([id, q]) => ({ p: S.produits.find((x) => x.id === id), q })).filter((x) => x.p)
+    .map(({ p, q }) => ({ cle: "a:" + p.id, id: p.id, nom: p.nom, reste: q, unite: p.unite, ajout: true, stock: +p.quantite }));
+  // Un essentiel ajouté à la main n'apparaît qu'une fois
+  const essentielsFiltres = essentiels.filter((e) => !D.ajouts[e.cle.slice(2)]);
+  return { recettes, acheter: acheter.sort(tri), essentiels: essentielsFiltres, ajouts: ajouts.sort(tri), enStock: enStock.sort(tri), basiques: [...basiques].sort((a, b) => a.localeCompare(b, "fr")) };
 }
 const arrondir = (q, u) => (u === "g" || u === "mL" ? Math.ceil(q / 10) * 10 : Math.ceil(q * 2 - 1e-9) / 2);
 const PLURIELS = { "boîte": "boîtes", pot: "pots", sachet: "sachets", paquet: "paquets", bouteille: "bouteilles", tranche: "tranches", gousse: "gousses" };
@@ -455,9 +503,9 @@ function vueDriveCourses(D) {
     <li class="article ${coche(a.cle) ? "" : "decoche"}"><label>
       <input type="checkbox" data-article="${esc(a.cle)}" ${coche(a.cle) ? "checked" : ""}>
       <span class="article-texte"><b>${esc(a.nom)}</b> <span class="article-q">${qte(a.reste, a.unite)}</span>
-        <small>${a.essentiel ? "Essentiel sous le seuil" : `${a.dispo ? `déjà ${qte(+a.dispo.toFixed(2), a.unite)} en stock, ` : ""}pour ${a.recettes.map(esc).join(", ")}`}</small></span>
+        <small>${a.ajout ? `Ajouté depuis le stock, il en reste ${qte(a.stock, a.unite)}` : a.essentiel ? "Essentiel sous le seuil" : `${a.dispo ? `déjà ${qte(+a.dispo.toFixed(2), a.unite)} en stock, ` : ""}pour ${a.recettes.map(esc).join(", ")}`}</small></span>
     </label></li>`;
-  const nb = [...L.acheter, ...L.essentiels].filter((a) => coche(a.cle)).length;
+  const nb = [...L.acheter, ...L.essentiels, ...L.ajouts].filter((a) => coche(a.cle)).length + L.enStock.filter((a) => D.forces.includes(a.cle)).length;
   return `
   <header class="entete"><h1>Les courses</h1>
     <p class="compte">${nb} article${nb > 1 ? "s" : ""} à acheter, budget ${D.params.budget} €. Décoche ce dont tu n'as pas besoin.</p></header>
@@ -466,8 +514,16 @@ function vueDriveCourses(D) {
     ${L.acheter.length ? `<ul class="liste articles">${L.acheter.map(ligne).join("")}</ul>` : `<p class="discret">Tout ce qu'il faut pour ces repas est déjà en stock.</p>`}
   </section>
   ${L.essentiels.length ? `<section class="groupe"><h2>Essentiels à racheter</h2><ul class="liste articles">${L.essentiels.map(ligne).join("")}</ul></section>` : ""}
-  ${L.enStock.length ? `<section class="groupe"><h2>Déjà en stock</h2><ul class="liste deja">${L.enStock.map((a) => `
-    <li><span><b>${esc(a.nom)}</b> ${qte(+a.quantite.toFixed(2), a.unite)}</span><small>${esc(a.produit?.nom ?? "")} : ${esc(a.dispoTexte)}</small></li>`).join("")}</ul></section>` : ""}
+  <section class="groupe"><h2>Ajoutés depuis le stock</h2>
+    ${L.ajouts.length ? `<ul class="liste articles">${L.ajouts.map(ligne).join("")}</ul>` : `<p class="discret">Rien pour l'instant. Ajoute ici ce que tu veux racheter même si tu en as encore.</p>`}
+    <button class="btn btn-sec btn-ajouter-repas" data-drive="ajouter-stock">Ajouter depuis le stock</button>
+  </section>
+  ${L.enStock.length ? `<section class="groupe"><h2>Déjà en stock pour les repas</h2><ul class="liste articles deja">${L.enStock.map((a) => `
+    <li class="article ${D.forces.includes(a.cle) ? "" : "decoche-doux"}"><label>
+      <input type="checkbox" data-force="${esc(a.cle)}" ${D.forces.includes(a.cle) ? "checked" : ""} aria-label="Racheter quand même ${esc(a.nom)}">
+      <span class="article-texte"><b>${esc(a.nom)}</b> <span class="article-q">${qte(+a.quantite.toFixed(2), a.unite)}</span>
+        <small>${esc(a.produit?.nom ?? "")} : ${esc(a.dispoTexte)}. ${D.forces.includes(a.cle) ? "Sera racheté." : "Coche pour racheter quand même."}</small></span>
+    </label></li>`).join("")}</ul></section>` : ""}
   ${L.basiques.length ? `<section class="groupe"><h2>Basiques à avoir</h2><p class="discret">${L.basiques.map(esc).join(", ")}</p></section>` : ""}
   <div class="barre-actions">
     <button class="btn btn-sec" data-drive="etape" data-i="2">Retour</button>
@@ -491,7 +547,10 @@ function vueDriveTexte(D) {
 function texteDrive(D) {
   const L = listeCourses(D), p = D.params;
   const coche = (a) => !D.decoches.includes(a.cle);
-  const achats = L.acheter.filter(coche), essentiels = L.essentiels.filter(coche);
+  const forces = L.enStock.filter((a) => D.forces.includes(a.cle));
+  const achats = [...L.acheter.filter(coche), ...forces.map((a) => ({ ...a, reste: arrondir(a.quantite, a.unite) }))].sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
+  const essentiels = [...L.essentiels.filter(coche), ...L.ajouts.filter(coche)];
+  const enStock = L.enStock.filter((a) => !D.forces.includes(a.cle));
   return [
     `Remplis mon panier Drive Carrefour (Carrefour Market Rive-de-Gier) avec cette liste préparée dans l'appli Stock Maison.`,
     ``,
@@ -505,10 +564,10 @@ function texteDrive(D) {
     `À acheter :`,
     ...(achats.length ? achats.map((a) => `- ${a.nom} : ${qte(a.reste, a.unite)}`) : ["- rien pour les repas"]),
     essentiels.length ? `` : null,
-    essentiels.length ? `Essentiels à racheter :` : null,
+    essentiels.length ? `Autres produits à racheter :` : null,
     ...essentiels.map((a) => `- ${a.nom} : ${qte(a.reste, a.unite)}`),
     ``,
-    L.enStock.length ? `Déjà en stock, ne pas acheter : ${L.enStock.map((a) => a.nom).join(", ")}.` : null,
+    enStock.length ? `Déjà en stock, ne pas acheter : ${enStock.map((a) => a.nom).join(", ")}.` : null,
     L.basiques.length ? `Basiques que j'ai normalement (sel, huile, épices…) : ${L.basiques.join(", ")}.` : null,
     ``,
     `Consignes : prends les produits au meilleur rapport qualité-prix (marque Carrefour si possible), arrondis aux conditionnements vendus et ne dépasse pas le budget. Si ça dépasse, dis-moi quoi retirer avant de remplir le panier.`,
@@ -595,6 +654,12 @@ function brancher() {
   const fd = $("#f-drive");
   if (fd) fd.onsubmit = (ev) => { ev.preventDefault(); lancerSelection(new FormData(fd)); };
   app.onchange = (ev) => {
+    const f = ev.target.closest("input[data-force]");
+    if (f) {
+      const D = etatDrive(), k = f.dataset.force;
+      D.forces = f.checked ? [...new Set([...D.forces, k])] : D.forces.filter((x) => x !== k);
+      sauverDrive(); rendre(); return;
+    }
     const c = ev.target.closest("input[data-article]");
     if (!c) return;
     const D = etatDrive(), k = c.dataset.article;
