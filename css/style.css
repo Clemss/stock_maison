@@ -302,3 +302,18 @@ code { font-size: .9em; }
 .form .ajout-q input { padding: 8px !important; font-size: 16px !important; }
 .ajout-q span { font-size: 12px; font-weight: 500; min-width: 30px; }
 .barre-feuille { position: sticky; bottom: calc(-20px - var(--sab)); margin: 0 -16px calc(-20px - var(--sab)); padding: 10px 16px calc(var(--sab) + 14px); background: var(--papier); border-top: 1px solid var(--trait); }
+
+/* Ranger les courses */
+.rangement { display: flex; flex-direction: column; gap: 6px; padding: 10px 10px 10px 12px; }
+.rangement + .rangement { border-top: 1px solid var(--trait); }
+.rangement-haut { display: flex; align-items: center; gap: 8px; }
+.form .rangement-haut .ajout-coche { flex: 1; }
+.form .rangement-haut .ajout-coche:has(> span:only-of-type) { flex: 1; }
+.form .rangement-nom { flex: 1; min-width: 0; padding: 9px 10px !important; font-size: 16px !important; }
+.rangement-haut:has(.rangement-nom) .ajout-coche { flex: none; }
+.form .ajout-q select { padding: 8px 22px 8px 6px; font-size: 13px; width: auto; background-position: calc(100% - 12px) 52%, calc(100% - 7px) 52%; }
+.form .rangement-haut .ajout-q { width: auto; min-width: 112px; }
+.form .rangement-haut .ajout-q input[type=number] { width: 64px; }
+.rangement-bas { display: flex; align-items: center; gap: 8px; padding-left: 34px; }
+.rangement-dest { color: var(--encre-2); font-size: 13px; }
+.form .rangement-emp { width: auto; flex: 1; padding: 6px 26px 6px 8px; font-size: 14px; }

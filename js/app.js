@@ -317,6 +317,8 @@ function actionDrive(action, i) {
     D.selection[+i] = r.id; D.vus.push(r.id); sauverDrive(); rendre();
   } else if (action === "choisir") feuilleChoixRecette(+i);
   else if (action === "ajouter-stock") feuilleAjoutStock();
+  else if (action === "ranger") feuilleRanger(articlesARanger(D));
+  else if (action === "ranger-libre") feuilleRanger([]);
   else if (action === "retirer") { D.selection.splice(+i, 1); sauverDrive(); rendre(); }
   else if (action === "ajouter") {
     const r = meilleure(D, sel(), [...D.selection]);
@@ -396,6 +398,146 @@ function feuilleAjoutStock() {
   };
 }
 
+// ---------- Ranger les courses dans le stock ----------
+// Emplacement et catégorie proposés pour un nouveau produit, d'après son nom
+const REGLES_RANGEMENT = [
+  [/surgele|glace|congele/, "congelateur", "Surgelés"],
+  [/concass|concentr|sauce|conserve|bocal|frito|en boite|sardine|thon au naturel/, "placard", "Épicerie salée"],
+  [/poulet|dinde|boeuf|bœuf|steak|viande|porc|filet mignon|jambon|lardon|saumon|cabillaud|colin|lieu|truite|maquereau|crevette|poisson|thon frais|steaks de thon/, "frigo", "Viande & poisson"],
+  [/yaourt|fromage|feta|emmental|parmesan|creme|crème|lait|beurre|skyr|mozzarella/, "frigo", "Produits laitiers"],
+  [/poivron|courgette|tomate|salade|concombre|carotte|brocoli|epinard|épinard|champignon|poireau|avocat|citron|asperge|chou|menthe|persil|fruit|pomme|banane|pamplemousse/, "frigo", "Fruits & légumes"],
+  [/oeuf|œuf/, "frigo", "Produits laitiers"],
+  [/pain|tortilla|brioche/, "placard", "Pain & viennoiseries"],
+  [/eau|jus|soda|vin|biere|bière|cafe|café|the |thé/, "placard", "Boissons"],
+];
+function rangementPour(nom, unite) {
+  const n = String(nom).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  let r = REGLES_RANGEMENT.find(([re]) => re.test(n));
+  if (unite === "boîte" && r && r[1] === "frigo") r = [null, "placard", "Épicerie salée"]; // une boîte se range au placard
+  const type = r ? r[1] : "placard";
+  const emp = S.emplacements.find((e) => e.type === type) || S.emplacements[0];
+  return { emplacement_id: emp?.id ?? null, categorie: r ? r[2] : "Épicerie salée" };
+}
+
+// Les articles validés dans le drive, avec le produit du stock correspondant
+function articlesARanger(D) {
+  const L = listeCourses(D);
+  const coche = (a) => !D.decoches.includes(a.cle);
+  const depuisIngredient = (a, q) => {
+    const p = produitPour(a.ing);
+    const conv = p ? convertir(q, a.unite, p.unite) : null;
+    return p && conv != null ? { nom: p.nom, quantite: +conv.toFixed(2), unite: p.unite, produit_id: p.id }
+      : { nom: a.nom, quantite: q, unite: a.unite, produit_id: null };
+  };
+  return [
+    ...L.acheter.filter(coche).map((a) => depuisIngredient(a, a.reste)),
+    ...L.enStock.filter((a) => D.forces.includes(a.cle)).map((a) => depuisIngredient(a, arrondir(a.quantite, a.unite))),
+    ...L.essentiels.filter(coche).map((a) => ({ nom: a.nom, quantite: a.reste, unite: a.unite, produit_id: a.cle.slice(2) })),
+    ...L.ajouts.filter(coche).map((a) => ({ nom: a.nom, quantite: a.reste, unite: a.unite, produit_id: a.id })),
+  ];
+}
+
+function feuilleRanger(articles) {
+  const lignes = articles.map((a, n) => ligneRangement(a, n)).join("");
+  const { sh } = ouvrirFeuille(`
+    <form class="form">
+      <div class="feuille-tete"><h2>Ranger les courses</h2><button type="button" class="lien" data-fermer>Fermer</button></div>
+      <p class="discret sans-marge">Décoche ce qui manquait au drive, corrige les quantités réellement achetées et ajoute ce que tu as pris en plus.</p>
+      <ul class="liste ajouts rangements">${lignes}</ul>
+      <button type="button" class="btn btn-sec" data-ajout-ligne>Ajouter un autre produit</button>
+      <datalist id="noms-stock">${[...new Set(S.produits.map((p) => p.nom))].sort((a, b) => a.localeCompare(b, "fr")).map((n) => `<option value="${esc(n)}">`).join("")}</datalist>
+      <div class="barre-feuille"><button class="btn">Mettre en stock</button></div>
+    </form>`,
+    async (d) => {
+      const n = await rangerDansStock(sh);
+      if (!n) { toast("Aucun produit coché"); return "garder"; }
+      const D = etatDrive();
+      if (D.etape === 4) { const params = D.params; S.drive = { ...nouveauDrive(), params }; sauverDrive(); }
+      toast(`${n} produit${n > 1 ? "s" : ""} mis en stock`);
+      S.onglet = "stock";
+    });
+  let compteur = articles.length;
+  $("[data-ajout-ligne]", sh).onclick = () => {
+    $(".rangements", sh).insertAdjacentHTML("beforeend", ligneRangement({ nom: "", quantite: 1, unite: "pièce", produit_id: null, libre: true }, compteur++));
+    brancherLignes(sh);
+    const li = $(".rangements", sh).lastElementChild;
+    li.scrollIntoView({ block: "center" }); $("input[name^=nom-]", li).focus();
+  };
+  brancherLignes(sh);
+  if (!articles.length) $("[data-ajout-ligne]", sh).click();
+}
+
+function ligneRangement(a, n) {
+  const p = a.produit_id && S.produits.find((x) => x.id === a.produit_id);
+  const emp = p ? S.emplacements.find((e) => e.id === p.emplacement_id) : null;
+  const choixEmp = (sel) => S.emplacements.map((e) => `<option value="${e.id}" ${e.id === sel ? "selected" : ""}>${e.icone} ${esc(e.nom)}</option>`).join("");
+  const r = rangementPour(a.nom, a.unite);
+  return `
+  <li class="rangement" data-n="${n}" data-produit="${p ? p.id : ""}">
+    <div class="rangement-haut">
+      <label class="ajout-coche"><input type="checkbox" name="c-${n}" checked data-pas-focus aria-label="Mettre en stock">
+        ${a.libre ? "" : `<span><b>${esc(a.nom)}</b></span>`}</label>
+      ${a.libre ? `<input class="rangement-nom" name="nom-${n}" list="noms-stock" placeholder="Nom du produit" autocomplete="off" aria-label="Nom du produit">` : `<input type="hidden" name="nom-${n}" value="${esc(a.nom)}">`}
+      <label class="ajout-q"><input type="number" name="q-${n}" min="0" step="any" value="${a.quantite}" inputmode="decimal" data-pas-focus aria-label="Quantité achetée">
+        ${p ? `<span>${esc(p.unite)}</span><input type="hidden" name="u-${n}" value="${esc(p.unite)}">`
+          : `<select name="u-${n}" class="rangement-unite" aria-label="Unité">${UNITES.map((u) => `<option ${u === a.unite ? "selected" : ""}>${u}</option>`).join("")}</select>`}</label>
+    </div>
+    <div class="rangement-bas">${p
+      ? `<small class="rangement-dest">Ajouté à ${esc(p.nom)}, ${emp ? `${emp.icone} ${esc(emp.nom)}` : "sans emplacement"} (${qte(+p.quantite, p.unite)} actuellement)</small>`
+      : `<small class="rangement-dest">Nouveau produit dans</small><select name="e-${n}" class="rangement-emp" aria-label="Emplacement">${choixEmp(r.emplacement_id)}</select>`}
+    </div>
+  </li>`;
+}
+
+// Quand on tape le nom d'un produit déjà en stock, la ligne s'y rattache
+function brancherLignes(sh) {
+  sh.querySelectorAll("input.rangement-nom").forEach((inp) => {
+    if (inp.dataset.branche) return;
+    inp.dataset.branche = "1";
+    inp.oninput = () => {
+      const li = inp.closest("li");
+      const p = S.produits.find((x) => norm(x.nom) === norm(inp.value));
+      li.dataset.produit = p ? p.id : "";
+      const dest = $(".rangement-dest", li), sel = $(".rangement-emp", li), unite = $(".rangement-unite", li);
+      if (p) {
+        const emp = S.emplacements.find((e) => e.id === p.emplacement_id);
+        dest.textContent = `Ajouté à ${p.nom}, ${emp ? `${emp.icone} ${emp.nom}` : "sans emplacement"} (${qte(+p.quantite, p.unite)} actuellement)`;
+        if (sel) sel.hidden = true;
+        if (unite) unite.value = UNITES.includes(p.unite) ? p.unite : unite.value;
+      } else {
+        dest.textContent = "Nouveau produit dans";
+        if (sel) { sel.hidden = false; const r = rangementPour(inp.value); if (r.emplacement_id) sel.value = r.emplacement_id; }
+      }
+    };
+  });
+}
+
+async function rangerDansStock(sh) {
+  const fd = new FormData($("form", sh));
+  const cumul = {}; // plusieurs lignes peuvent viser le même produit
+  let n = 0;
+  for (const li of sh.querySelectorAll(".rangement")) {
+    const k = li.dataset.n;
+    if (fd.get(`c-${k}`) !== "on") continue;
+    const nom = String(fd.get(`nom-${k}`) || "").trim();
+    const q = +fd.get(`q-${k}`) || 0;
+    const unite = fd.get(`u-${k}`) || "pièce";
+    if (!nom || q <= 0) continue;
+    const p = li.dataset.produit && S.produits.find((x) => x.id === li.dataset.produit);
+    const conv = p ? convertir(q, unite, p.unite) : null;
+    if (p && conv != null) {
+      cumul[p.id] = +((cumul[p.id] ?? +p.quantite) + conv).toFixed(2);
+      await S.store.setQuantite(p.id, cumul[p.id]);
+    } else {
+      const r = rangementPour(nom, unite);
+      await S.store.saveProduit({ nom, categorie: r.categorie, quantite: q, unite, emplacement_id: fd.get(`e-${k}`) || r.emplacement_id,
+        seuil_min: 0, toujours_stock: false, peremption: null });
+    }
+    n++;
+  }
+  return n;
+}
+
 // Liste de courses : besoins des recettes moins le stock, plus les essentiels sous le seuil
 function listeCourses(D) {
   const recettes = D.selection.map((id) => S.recettes.find((r) => r.id === id)).filter(Boolean);
@@ -466,7 +608,10 @@ function vueDrive() {
     <label><span>Envies ou contraintes <small>facultatif, transmis à Claude</small></span>
       <textarea name="envies" rows="2" placeholder="ex : repas rapides le soir">${esc(p.envies)}</textarea></label>
     <button class="btn">Proposer des repas</button>
-  </form>`;
+  </form>
+  <section class="groupe"><h2>Courses faites sans l'appli ?</h2>
+    <button class="btn btn-sec" data-drive="ranger-libre">Ranger des courses dans le stock</button>
+  </section>`;
 }
 
 function vueDriveRepas(D) {
@@ -540,7 +685,8 @@ function vueDriveTexte(D) {
     <p class="compte">Le texte est copié. Colle-le dans une conversation avec Claude : il remplit ton panier Carrefour sans dépasser le budget.</p></header>
   <textarea class="texte-drive" readonly rows="14" aria-label="Texte de la demande">${esc(D.texte)}</textarea>
   <div class="form">
-    <button class="btn" data-drive="copier">Copier à nouveau</button>
+    <button class="btn" data-drive="ranger">J'ai récupéré les courses</button>
+    <button class="btn btn-sec" data-drive="copier">Copier à nouveau</button>
     <a class="btn btn-sec" href="https://claude.ai/new" target="_blank" rel="noopener">Ouvrir Claude</a>
     <button class="btn btn-sec" data-drive="etape" data-i="3">Modifier les courses</button>
     <button class="lien" data-drive="nouveau">Commencer un nouveau drive</button>
