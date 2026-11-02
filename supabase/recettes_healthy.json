@@ -1,0 +1,1739 @@
+[
+ {
+  "nom": "Buddha bowl quinoa et pois chiches",
+  "portions": 2,
+  "temps_min": 25,
+  "tags": [
+   "végé",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Quinoa",
+    "quantite": 150,
+    "unite": "g"
+   },
+   {
+    "nom": "Pois chiches",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Carottes",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Avocat",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Concombre",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Citron",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Yaourt grec",
+    "quantite": 1,
+    "unite": "pot"
+   },
+   {
+    "nom": "Huile d'olive",
+    "quantite": null,
+    "unite": null
+   },
+   {
+    "nom": "Cumin",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Cuire le quinoa 12 min.\nÉgoutter et rincer les pois chiches, les poêler 5 min avec le cumin.\nRâper les carottes, couper l'avocat et le concombre.\nMélanger le yaourt avec le jus de citron, sel et poivre.\nDresser les bols et napper de sauce."
+ },
+ {
+  "nom": "Salade de thon et haricots blancs",
+  "portions": 2,
+  "temps_min": 10,
+  "tags": [
+   "poisson",
+   "rapide",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Thon au naturel",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Haricots blancs",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Tomates",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Oignon rouge",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Persil",
+    "quantite": null,
+    "unite": null
+   },
+   {
+    "nom": "Huile d'olive",
+    "quantite": null,
+    "unite": null
+   },
+   {
+    "nom": "Vinaigre",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Égoutter et rincer les haricots blancs.\nCouper les tomates et émincer finement l'oignon rouge.\nMélanger avec le thon émietté, l'huile, le vinaigre et le persil."
+ },
+ {
+  "nom": "Chili sin carne",
+  "portions": 2,
+  "temps_min": 35,
+  "tags": [
+   "végé",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Haricots rouges",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Maïs doux",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Tomates concassées",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Oignon",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Poivron",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Riz basmati",
+    "quantite": 150,
+    "unite": "g"
+   },
+   {
+    "nom": "Cumin",
+    "quantite": null,
+    "unite": null
+   },
+   {
+    "nom": "Paprika",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Faire revenir l'oignon et le poivron émincés 5 min.\nAjouter les épices, les tomates, les haricots rouges et le maïs égouttés.\nLaisser mijoter 20 min.\nServir avec le riz cuit."
+ },
+ {
+  "nom": "Fajitas de poulet légères",
+  "portions": 2,
+  "temps_min": 25,
+  "tags": [
+   "volaille",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Escalopes de poulet",
+    "quantite": 300,
+    "unite": "g"
+   },
+   {
+    "nom": "Poivrons",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Oignon",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Tortillas complètes",
+    "quantite": 4,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Mélange épices fajitas",
+    "quantite": 1,
+    "unite": "sachet"
+   },
+   {
+    "nom": "Yaourt grec",
+    "quantite": 1,
+    "unite": "pot"
+   }
+  ],
+  "etapes": "Couper le poulet en lanières, les poivrons et l'oignon en fines tranches.\nSaisir le poulet 5 min, ajouter les légumes et le mélange d'épices avec un peu d'eau.\nCuire 8 min.\nGarnir les tortillas chaudes et servir avec le yaourt grec."
+ },
+ {
+  "nom": "Saumon, riz et brocoli",
+  "portions": 2,
+  "temps_min": 25,
+  "tags": [
+   "poisson",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Pavés de saumon",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Riz basmati",
+    "quantite": 150,
+    "unite": "g"
+   },
+   {
+    "nom": "Brocoli",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Citron",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Sauce soja",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Cuire le riz.\nCuire le brocoli en fleurettes 6 min à la vapeur.\nCuire le saumon 4 min par face à la poêle.\nArroser de citron et d'un trait de sauce soja."
+ },
+ {
+  "nom": "Poêlée de poulet, courgettes et Ebly",
+  "portions": 2,
+  "temps_min": 25,
+  "tags": [
+   "volaille",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Escalopes de poulet",
+    "quantite": 300,
+    "unite": "g"
+   },
+   {
+    "nom": "Courgettes",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Ebly",
+    "quantite": 150,
+    "unite": "g"
+   },
+   {
+    "nom": "Ail",
+    "quantite": null,
+    "unite": null
+   },
+   {
+    "nom": "Herbes de Provence",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Cuire l'Ebly 10 min.\nSaisir le poulet en dés 5 min.\nAjouter les courgettes en dés, l'ail et les herbes, cuire 8 min.\nMélanger avec l'Ebly."
+ },
+ {
+  "nom": "Curry de lentilles corail",
+  "portions": 2,
+  "temps_min": 30,
+  "tags": [
+   "végé",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Lentilles corail",
+    "quantite": 200,
+    "unite": "g"
+   },
+   {
+    "nom": "Lait de coco",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Tomates concassées",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Oignon",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Épinards frais",
+    "quantite": 100,
+    "unite": "g"
+   },
+   {
+    "nom": "Curry",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Faire revenir l'oignon avec le curry.\nAjouter les lentilles rincées, les tomates, le lait de coco et 30 cl d'eau.\nCuire 20 min en remuant.\nAjouter les épinards 2 min avant la fin."
+ },
+ {
+  "nom": "Omelette aux légumes",
+  "portions": 2,
+  "temps_min": 15,
+  "tags": [
+   "végé",
+   "rapide",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Œufs",
+    "quantite": 4,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Courgette",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Champignons",
+    "quantite": 150,
+    "unite": "g"
+   },
+   {
+    "nom": "Oignon",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Salade verte",
+    "quantite": 1,
+    "unite": "pièce"
+   }
+  ],
+  "etapes": "Faire revenir l'oignon, la courgette et les champignons 6 min.\nVerser les œufs battus, cuire 4 min à feu doux.\nServir avec la salade."
+ },
+ {
+  "nom": "Soupe de légumes maison",
+  "portions": 2,
+  "temps_min": 35,
+  "tags": [
+   "végé",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Carottes",
+    "quantite": 3,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Poireau",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Pommes de terre",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Courgette",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Bouillon cube",
+    "quantite": 1,
+    "unite": "pièce"
+   }
+  ],
+  "etapes": "Éplucher et couper les légumes en morceaux.\nCouvrir d'eau avec le bouillon, cuire 25 min.\nMixer, saler et poivrer."
+ },
+ {
+  "nom": "Cabillaud en papillote et haricots verts",
+  "portions": 2,
+  "temps_min": 25,
+  "tags": [
+   "poisson",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Filets de cabillaud",
+    "quantite": 300,
+    "unite": "g"
+   },
+   {
+    "nom": "Haricots verts",
+    "quantite": 300,
+    "unite": "g"
+   },
+   {
+    "nom": "Citron",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Tomates cerises",
+    "quantite": 150,
+    "unite": "g"
+   },
+   {
+    "nom": "Huile d'olive",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Préchauffer le four à 200 °C.\nDéposer le poisson, les tomates cerises et des rondelles de citron sur du papier cuisson, fermer en papillote.\nCuire 15 min.\nCuire les haricots verts 8 min à l'eau bouillante."
+ },
+ {
+  "nom": "Wok de crevettes et légumes",
+  "portions": 2,
+  "temps_min": 20,
+  "tags": [
+   "poisson",
+   "rapide",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Crevettes décortiquées",
+    "quantite": 200,
+    "unite": "g"
+   },
+   {
+    "nom": "Nouilles de riz",
+    "quantite": 150,
+    "unite": "g"
+   },
+   {
+    "nom": "Poivron",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Carottes",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Brocoli",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Sauce soja",
+    "quantite": null,
+    "unite": null
+   },
+   {
+    "nom": "Gingembre",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Réhydrater les nouilles dans l'eau chaude.\nFaire sauter les légumes en lanières 5 min à feu vif.\nAjouter les crevettes et le gingembre, 3 min.\nAjouter les nouilles et la sauce soja, mélanger."
+ },
+ {
+  "nom": "Salade de quinoa méditerranéenne",
+  "portions": 2,
+  "temps_min": 20,
+  "tags": [
+   "végé",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Quinoa",
+    "quantite": 150,
+    "unite": "g"
+   },
+   {
+    "nom": "Concombre",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Tomates",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Feta",
+    "quantite": 100,
+    "unite": "g"
+   },
+   {
+    "nom": "Oignon rouge",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Citron",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Huile d'olive",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Cuire le quinoa et le laisser refroidir.\nCouper les légumes en dés et émietter la feta.\nMélanger avec le jus de citron et l'huile d'olive."
+ },
+ {
+  "nom": "Pois chiches au curry et épinards",
+  "portions": 2,
+  "temps_min": 25,
+  "tags": [
+   "végé",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Pois chiches",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Épinards frais",
+    "quantite": 150,
+    "unite": "g"
+   },
+   {
+    "nom": "Tomates concassées",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Oignon",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Riz basmati",
+    "quantite": 120,
+    "unite": "g"
+   },
+   {
+    "nom": "Curry",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Faire revenir l'oignon avec le curry.\nAjouter les tomates et les pois chiches égouttés, mijoter 12 min.\nAjouter les épinards jusqu'à ce qu'ils fondent.\nServir avec le riz."
+ },
+ {
+  "nom": "Poulet, patate douce et haricots verts",
+  "portions": 2,
+  "temps_min": 40,
+  "tags": [
+   "volaille",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Escalopes de poulet",
+    "quantite": 300,
+    "unite": "g"
+   },
+   {
+    "nom": "Patates douces",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Haricots verts",
+    "quantite": 200,
+    "unite": "g"
+   },
+   {
+    "nom": "Paprika",
+    "quantite": null,
+    "unite": null
+   },
+   {
+    "nom": "Huile d'olive",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Couper les patates douces en cubes, les rôtir 30 min à 200 °C avec huile et paprika.\nCuire le poulet à la poêle 10 min.\nCuire les haricots verts 8 min à l'eau."
+ },
+ {
+  "nom": "Pâtes complètes au thon et tomate",
+  "portions": 2,
+  "temps_min": 20,
+  "tags": [
+   "poisson",
+   "rapide",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Pâtes complètes",
+    "quantite": 200,
+    "unite": "g"
+   },
+   {
+    "nom": "Thon au naturel",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Tomates concassées",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Oignon",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Basilic",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Cuire les pâtes.\nFaire revenir l'oignon, ajouter les tomates et cuire 10 min.\nAjouter le thon émietté et le basilic, mélanger aux pâtes."
+ },
+ {
+  "nom": "Gratin léger de courgettes",
+  "portions": 2,
+  "temps_min": 40,
+  "tags": [
+   "végé",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Courgettes",
+    "quantite": 3,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Œufs",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Lait demi-écrémé",
+    "quantite": 200,
+    "unite": "mL"
+   },
+   {
+    "nom": "Emmental râpé",
+    "quantite": 50,
+    "unite": "g"
+   },
+   {
+    "nom": "Muscade",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Couper les courgettes en rondelles et les faire revenir 8 min.\nBattre les œufs avec le lait, sel, poivre et muscade.\nVerser sur les courgettes dans un plat, parsemer d'emmental.\nCuire 25 min à 180 °C."
+ },
+ {
+  "nom": "Poke bowl saumon et avocat",
+  "portions": 2,
+  "temps_min": 25,
+  "tags": [
+   "poisson",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Riz basmati",
+    "quantite": 150,
+    "unite": "g"
+   },
+   {
+    "nom": "Pavés de saumon",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Avocat",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Concombre",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Carottes",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Sauce soja",
+    "quantite": null,
+    "unite": null
+   },
+   {
+    "nom": "Graines de sésame",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Cuire le riz et le laisser tiédir.\nCuire le saumon et l'émietter (ou le couper en cubes s'il est très frais).\nCouper l'avocat, le concombre et râper la carotte.\nDresser et assaisonner de sauce soja et sésame."
+ },
+ {
+  "nom": "Salade de lentilles vertes",
+  "portions": 2,
+  "temps_min": 30,
+  "tags": [
+   "végé",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Lentilles vertes",
+    "quantite": 200,
+    "unite": "g"
+   },
+   {
+    "nom": "Carottes",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Oignon rouge",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Œufs",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Moutarde",
+    "quantite": null,
+    "unite": null
+   },
+   {
+    "nom": "Vinaigre",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Cuire les lentilles 20 min et les laisser tiédir.\nCuire les œufs 9 min, les écaler.\nCouper les carottes en petits dés et l'oignon finement.\nMélanger avec une vinaigrette à la moutarde."
+ },
+ {
+  "nom": "Tacos de dinde et maïs",
+  "portions": 2,
+  "temps_min": 20,
+  "tags": [
+   "volaille",
+   "rapide",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Escalopes de dinde",
+    "quantite": 300,
+    "unite": "g"
+   },
+   {
+    "nom": "Tortillas complètes",
+    "quantite": 4,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Maïs doux",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Tomates",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Salade verte",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Yaourt grec",
+    "quantite": 1,
+    "unite": "pot"
+   },
+   {
+    "nom": "Paprika",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Couper la dinde en lanières et la saisir 6 min avec le paprika.\nCouper les tomates et la salade.\nGarnir les tortillas avec la dinde, le maïs, les crudités et le yaourt."
+ },
+ {
+  "nom": "Minestrone",
+  "portions": 2,
+  "temps_min": 35,
+  "tags": [
+   "végé",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Haricots blancs",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Courgette",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Carottes",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Tomates concassées",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Pâtes complètes",
+    "quantite": 80,
+    "unite": "g"
+   },
+   {
+    "nom": "Oignon",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Bouillon cube",
+    "quantite": 1,
+    "unite": "pièce"
+   }
+  ],
+  "etapes": "Faire revenir l'oignon et les carottes en dés.\nAjouter la courgette, les tomates, le bouillon et 1 L d'eau, cuire 15 min.\nAjouter les pâtes et les haricots blancs, cuire 10 min."
+ },
+ {
+  "nom": "Steak haché 5 % et légumes rôtis",
+  "portions": 2,
+  "temps_min": 40,
+  "tags": [
+   "viande",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Steaks hachés 5 %",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Pommes de terre",
+    "quantite": 3,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Courgette",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Poivron",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Oignon rouge",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Herbes de Provence",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Couper les légumes en morceaux, les rôtir 30 min à 200 °C avec huile et herbes.\nCuire les steaks à la poêle selon la cuisson voulue."
+ },
+ {
+  "nom": "Shakshuka",
+  "portions": 2,
+  "temps_min": 25,
+  "tags": [
+   "végé",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Œufs",
+    "quantite": 4,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Tomates concassées",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Poivron",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Oignon",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Cumin",
+    "quantite": null,
+    "unite": null
+   },
+   {
+    "nom": "Paprika",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Faire revenir l'oignon et le poivron 8 min.\nAjouter les tomates et les épices, mijoter 10 min.\nCreuser 4 puits, y casser les œufs et cuire à couvert 6 min."
+ },
+ {
+  "nom": "Salade niçoise",
+  "portions": 2,
+  "temps_min": 25,
+  "tags": [
+   "poisson",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Thon au naturel",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Œufs",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Haricots verts",
+    "quantite": 200,
+    "unite": "g"
+   },
+   {
+    "nom": "Tomates",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Pommes de terre",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Salade verte",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Huile d'olive",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Cuire les pommes de terre 20 min, les haricots verts 8 min et les œufs 9 min.\nCouper les tomates et les pommes de terre.\nDresser sur la salade avec le thon et les œufs."
+ },
+ {
+  "nom": "Risotto léger aux champignons",
+  "portions": 2,
+  "temps_min": 35,
+  "tags": [
+   "végé",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Riz arborio",
+    "quantite": 150,
+    "unite": "g"
+   },
+   {
+    "nom": "Champignons",
+    "quantite": 250,
+    "unite": "g"
+   },
+   {
+    "nom": "Oignon",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Bouillon cube",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Parmesan",
+    "quantite": 30,
+    "unite": "g"
+   },
+   {
+    "nom": "Vin blanc sec",
+    "quantite": 0.5,
+    "unite": "bouteille"
+   }
+  ],
+  "etapes": "Faire revenir l'oignon et les champignons.\nAjouter le riz, le nacrer 2 min, puis déglacer au vin blanc.\nAjouter le bouillon chaud louche par louche pendant 18 min.\nTerminer avec le parmesan."
+ },
+ {
+  "nom": "Poulet basquaise léger",
+  "portions": 2,
+  "temps_min": 40,
+  "tags": [
+   "volaille",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Escalopes de poulet",
+    "quantite": 300,
+    "unite": "g"
+   },
+   {
+    "nom": "Poivrons",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Tomates concassées",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Oignon",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Riz basmati",
+    "quantite": 150,
+    "unite": "g"
+   },
+   {
+    "nom": "Ail",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Dorer le poulet en morceaux, réserver.\nFaire revenir oignon, ail et poivrons 8 min.\nAjouter les tomates et le poulet, mijoter 20 min.\nServir avec le riz."
+ },
+ {
+  "nom": "Colin, quinoa et poireaux fondants",
+  "portions": 2,
+  "temps_min": 30,
+  "tags": [
+   "poisson",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Filets de colin",
+    "quantite": 300,
+    "unite": "g"
+   },
+   {
+    "nom": "Quinoa",
+    "quantite": 150,
+    "unite": "g"
+   },
+   {
+    "nom": "Poireaux",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Crème légère",
+    "quantite": 100,
+    "unite": "mL"
+   }
+  ],
+  "etapes": "Cuire le quinoa.\nFaire fondre les poireaux émincés 15 min à couvert, ajouter la crème.\nCuire le colin 4 min par face à la poêle."
+ },
+ {
+  "nom": "Velouté de potiron",
+  "portions": 2,
+  "temps_min": 35,
+  "tags": [
+   "végé",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Potiron",
+    "quantite": 800,
+    "unite": "g"
+   },
+   {
+    "nom": "Pommes de terre",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Oignon",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Bouillon cube",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Crème légère",
+    "quantite": 50,
+    "unite": "mL"
+   }
+  ],
+  "etapes": "Couper le potiron, la pomme de terre et l'oignon.\nCouvrir d'eau avec le bouillon et cuire 25 min.\nMixer avec la crème."
+ },
+ {
+  "nom": "Wraps complets au poulet et crudités",
+  "portions": 2,
+  "temps_min": 15,
+  "tags": [
+   "volaille",
+   "rapide",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Tortillas complètes",
+    "quantite": 4,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Blanc de poulet",
+    "quantite": 4,
+    "unite": "tranche"
+   },
+   {
+    "nom": "Salade verte",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Tomates",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Carottes",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Fromage frais",
+    "quantite": 50,
+    "unite": "g"
+   }
+  ],
+  "etapes": "Tartiner les tortillas de fromage frais.\nGarnir de poulet, salade, tomates et carotte râpée.\nRouler et couper en deux."
+ },
+ {
+  "nom": "Burrito bowl haricots rouges et avocat",
+  "portions": 2,
+  "temps_min": 25,
+  "tags": [
+   "végé",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Riz basmati",
+    "quantite": 150,
+    "unite": "g"
+   },
+   {
+    "nom": "Haricots rouges",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Maïs doux",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Avocat",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Tomates",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Citron vert",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Mélange épices fajitas",
+    "quantite": 0.5,
+    "unite": "sachet"
+   }
+  ],
+  "etapes": "Cuire le riz.\nRéchauffer les haricots rouges avec le mélange d'épices.\nCouper l'avocat et les tomates.\nDresser les bols avec le maïs et un filet de citron vert."
+ },
+ {
+  "nom": "Salade de pois chiches, concombre et feta",
+  "portions": 2,
+  "temps_min": 10,
+  "tags": [
+   "végé",
+   "rapide",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Pois chiches",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Concombre",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Tomates",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Feta",
+    "quantite": 100,
+    "unite": "g"
+   },
+   {
+    "nom": "Oignon rouge",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Citron",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Huile d'olive",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Égoutter les pois chiches.\nCouper les légumes en dés et émietter la feta.\nAssaisonner de citron et d'huile d'olive."
+ },
+ {
+  "nom": "Saumon et purée de patate douce",
+  "portions": 2,
+  "temps_min": 30,
+  "tags": [
+   "poisson",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Pavés de saumon",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Patates douces",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Épinards frais",
+    "quantite": 150,
+    "unite": "g"
+   }
+  ],
+  "etapes": "Cuire les patates douces 20 min à l'eau, les écraser en purée.\nCuire le saumon 4 min par face.\nFaire tomber les épinards 2 min à la poêle."
+ },
+ {
+  "nom": "Tortilla de pommes de terre",
+  "portions": 2,
+  "temps_min": 35,
+  "tags": [
+   "végé",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Œufs",
+    "quantite": 5,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Pommes de terre",
+    "quantite": 3,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Oignon",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Salade verte",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Huile d'olive",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Couper les pommes de terre en fines tranches, les cuire 15 min à la poêle avec l'oignon.\nVerser les œufs battus, cuire 8 min à feu doux.\nRetourner et cuire 3 min. Servir avec la salade."
+ },
+ {
+  "nom": "Poulet tikka léger",
+  "portions": 2,
+  "temps_min": 30,
+  "tags": [
+   "volaille",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Escalopes de poulet",
+    "quantite": 300,
+    "unite": "g"
+   },
+   {
+    "nom": "Yaourt grec",
+    "quantite": 1,
+    "unite": "pot"
+   },
+   {
+    "nom": "Riz basmati",
+    "quantite": 150,
+    "unite": "g"
+   },
+   {
+    "nom": "Concombre",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Garam masala",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Mariner le poulet en dés dans la moitié du yaourt et les épices (10 min minimum).\nCuire à la poêle 10 min.\nServir avec le riz et une raïta : reste du yaourt et concombre râpé."
+ },
+ {
+  "nom": "Spaghetti de courgettes bolognaise",
+  "portions": 2,
+  "temps_min": 30,
+  "tags": [
+   "viande",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Courgettes",
+    "quantite": 3,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Steaks hachés 5 %",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Tomates concassées",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Concentré de tomates",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Oignon",
+    "quantite": 1,
+    "unite": "pièce"
+   }
+  ],
+  "etapes": "Faire revenir l'oignon et la viande émiettée.\nAjouter les tomates et le concentré, mijoter 15 min.\nTailler les courgettes en spaghetti, les poêler 3 min.\nServir avec la sauce."
+ },
+ {
+  "nom": "Salade tiède haricots verts, œufs et quinoa",
+  "portions": 2,
+  "temps_min": 25,
+  "tags": [
+   "végé",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Haricots verts",
+    "quantite": 300,
+    "unite": "g"
+   },
+   {
+    "nom": "Œufs",
+    "quantite": 4,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Quinoa",
+    "quantite": 120,
+    "unite": "g"
+   },
+   {
+    "nom": "Échalote",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Moutarde",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Cuire le quinoa, les haricots verts 8 min et les œufs 7 min.\nPréparer une vinaigrette avec l'échalote et la moutarde.\nMélanger le tout et ajouter les œufs coupés en deux."
+ },
+ {
+  "nom": "Cabillaud à la tomate et pois chiches",
+  "portions": 2,
+  "temps_min": 25,
+  "tags": [
+   "poisson",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Filets de cabillaud",
+    "quantite": 300,
+    "unite": "g"
+   },
+   {
+    "nom": "Pois chiches",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Tomate frito",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Oignon",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Épinards frais",
+    "quantite": 100,
+    "unite": "g"
+   }
+  ],
+  "etapes": "Faire revenir l'oignon.\nAjouter la sauce tomate et les pois chiches, mijoter 8 min.\nDéposer le cabillaud dans la sauce, couvrir et cuire 8 min.\nAjouter les épinards à la fin."
+ },
+ {
+  "nom": "Dinde à la moutarde, riz et haricots verts",
+  "portions": 2,
+  "temps_min": 25,
+  "tags": [
+   "volaille",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Escalopes de dinde",
+    "quantite": 300,
+    "unite": "g"
+   },
+   {
+    "nom": "Haricots verts",
+    "quantite": 300,
+    "unite": "g"
+   },
+   {
+    "nom": "Riz basmati",
+    "quantite": 150,
+    "unite": "g"
+   },
+   {
+    "nom": "Crème légère",
+    "quantite": 100,
+    "unite": "mL"
+   },
+   {
+    "nom": "Moutarde",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Cuire le riz et les haricots verts.\nSaisir la dinde 5 min par face.\nAjouter la crème et une cuillère de moutarde, laisser réduire 3 min."
+ },
+ {
+  "nom": "Taboulé de boulgour aux pois chiches",
+  "portions": 2,
+  "temps_min": 20,
+  "tags": [
+   "végé",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Boulgour",
+    "quantite": 150,
+    "unite": "g"
+   },
+   {
+    "nom": "Tomates",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Concombre",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Menthe fraîche",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Citron",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Pois chiches",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Huile d'olive",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Cuire le boulgour 10 min, l'égoutter et le laisser refroidir.\nCouper les légumes en petits dés, ciseler la menthe.\nMélanger avec les pois chiches, le jus de citron et l'huile."
+ },
+ {
+  "nom": "Tofu sauté aux légumes",
+  "portions": 2,
+  "temps_min": 25,
+  "tags": [
+   "végé",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Tofu ferme",
+    "quantite": 200,
+    "unite": "g"
+   },
+   {
+    "nom": "Brocoli",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Poivron",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Champignons",
+    "quantite": 150,
+    "unite": "g"
+   },
+   {
+    "nom": "Riz basmati",
+    "quantite": 150,
+    "unite": "g"
+   },
+   {
+    "nom": "Sauce soja",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Cuire le riz.\nDorer le tofu en cubes 6 min.\nAjouter les légumes émincés, sauter 6 min à feu vif.\nAssaisonner de sauce soja."
+ },
+ {
+  "nom": "Salade de riz au thon et maïs",
+  "portions": 2,
+  "temps_min": 25,
+  "tags": [
+   "poisson",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Riz basmati",
+    "quantite": 150,
+    "unite": "g"
+   },
+   {
+    "nom": "Thon au naturel",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Maïs doux",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Tomates",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Œufs",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Poivron",
+    "quantite": 1,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Vinaigre",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Cuire le riz et les œufs (9 min), laisser refroidir.\nCouper les tomates et le poivron en dés.\nMélanger avec le thon, le maïs et une vinaigrette."
+ },
+ {
+  "nom": "Haricots blancs à la tomate et œufs",
+  "portions": 2,
+  "temps_min": 20,
+  "tags": [
+   "végé",
+   "rapide",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Haricots blancs",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Tomate frito",
+    "quantite": 1,
+    "unite": "boîte"
+   },
+   {
+    "nom": "Œufs",
+    "quantite": 4,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Épinards frais",
+    "quantite": 100,
+    "unite": "g"
+   },
+   {
+    "nom": "Paprika",
+    "quantite": null,
+    "unite": null
+   }
+  ],
+  "etapes": "Réchauffer les haricots blancs dans la sauce tomate avec le paprika.\nAjouter les épinards.\nCasser les œufs dessus, couvrir et cuire 6 min."
+ },
+ {
+  "nom": "Truite, boulgour et courgettes",
+  "portions": 2,
+  "temps_min": 25,
+  "tags": [
+   "poisson",
+   "healthy"
+  ],
+  "ingredients": [
+   {
+    "nom": "Pavés de truite",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Boulgour",
+    "quantite": 150,
+    "unite": "g"
+   },
+   {
+    "nom": "Courgettes",
+    "quantite": 2,
+    "unite": "pièce"
+   },
+   {
+    "nom": "Citron",
+    "quantite": 1,
+    "unite": "pièce"
+   }
+  ],
+  "etapes": "Cuire le boulgour.\nPoêler les courgettes en rondelles 8 min.\nCuire la truite 3 min par face, arroser de citron."
+ }
+]

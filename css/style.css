@@ -241,3 +241,42 @@ code { font-size: .9em; }
 .retrait-q span { font-size: 13px; font-weight: 500; min-width: 32px; }
 .form .retrait-champs select { font-size: 15px; padding: 10px 28px 10px 10px; }
 .ing-base .point { background: var(--trait); }
+
+/* ---------- Drive en étapes ---------- */
+.etapes-drive { list-style: none; margin: 0 0 16px; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.etapes-drive li { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--encre-2); }
+.etapes-drive li::before { content: ""; height: 4px; border-radius: 2px; background: var(--trait); }
+.etapes-drive li span { display: none; }
+.etapes-drive li.faite::before { background: color-mix(in srgb, var(--frigo) 45%, var(--trait)); }
+.etapes-drive li.en-cours { color: var(--encre); }
+.etapes-drive li.en-cours::before { background: var(--frigo); }
+
+.repas { display: flex; flex-direction: column; border-radius: var(--rayon); border: 1px solid var(--trait); background: var(--surface); overflow: hidden; }
+.repas .recette { border: 0; border-radius: 0; }
+.repas-actions { display: flex; gap: 4px; padding: 4px 8px 6px; border-top: 1px solid var(--trait); }
+.repas-actions .lien { padding: 8px 8px; }
+.lien-discret { color: var(--encre-2); margin-left: auto; font-weight: 500; }
+.btn-ajouter-repas { margin-top: 10px; }
+.barre-actions { position: sticky; bottom: calc(var(--nav-h) + var(--sab) + 8px); display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-top: 18px;
+  padding: 8px; border-radius: 16px; background: color-mix(in srgb, var(--papier) 90%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.btn[disabled] { opacity: .4; }
+
+.articles .article label { display: flex; gap: 12px; align-items: flex-start; padding: 11px 12px; cursor: pointer; }
+.articles .article + .article { border-top: 1px solid var(--trait); }
+.article input { appearance: none; -webkit-appearance: none; flex: none; width: 24px; height: 24px; margin: 1px 0 0; border-radius: 7px; border: 2px solid var(--trait); background: var(--surface); display: grid; place-items: center; }
+.article input:checked { background: var(--frigo); border-color: var(--frigo); }
+.article input:checked::after { content: ""; width: 6px; height: 11px; border: solid #fff; border-width: 0 2.5px 2.5px 0; transform: translateY(-1px) rotate(45deg); }
+.article-texte { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.article-q { font-weight: 700; color: var(--frigo); font-variant-numeric: tabular-nums; }
+.article-texte small { flex-basis: 100%; color: var(--encre-2); font-size: 13px; }
+.article.decoche .article-texte { opacity: .45; text-decoration: line-through; }
+.deja li { display: flex; flex-direction: column; gap: 2px; padding: 9px 12px; }
+.deja li + li { border-top: 1px solid var(--trait); }
+.deja small { color: var(--frigo); font-size: 13px; }
+
+.choix { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.choix-ligne { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--trait); background: var(--surface); }
+.choix-ligne .nom { font-size: 16px; }
+.choix-ligne .meta { font-size: 13px; color: var(--encre-2); }
+.choix-ligne.actuelle { border-color: var(--frigo); border-width: 2px; }
+.texte-drive { width: 100%; margin-bottom: 12px; padding: 12px; border-radius: 12px; border: 1.5px solid var(--trait); background: var(--surface); color: var(--encre); font: 14px/1.5 ui-monospace, Menlo, monospace; resize: vertical; }

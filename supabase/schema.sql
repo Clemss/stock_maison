@@ -178,3 +178,6 @@ exception when others then null; end $$;
 do $$ begin
   alter publication supabase_realtime add table recette_ingredients;
 exception when others then null; end $$;
+
+-- V3 — étiquettes de recettes (végé, poisson, rapide…)
+alter table recettes add column if not exists tags text[] not null default '{}';

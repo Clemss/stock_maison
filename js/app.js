@@ -23,7 +23,7 @@ const bientotPerime = (p) => { const j = joursAvant(p.peremption); return j !== 
 const S = {
   store: null, user: null, foyer: null,
   emplacements: [], produits: [], recettes: [],
-  onglet: "stock", filtre: "tout", recherche: "",
+  onglet: "stock", filtre: "tout", recherche: "", filtreRecette: "tout", rechercheRecette: "", drive: null,
   bas: new Set(), // ids sous le seuil (pour ne notifier qu'au franchissement)
 };
 
@@ -230,52 +230,288 @@ function vueRacheter() {
   </section>`;
 }
 
-// ---------- Onglet Drive ----------
-function vueDrive() {
-  const f = S.foyer;
-  return `
-  <header class="entete"><h1>Préparer un drive</h1>
-    <p class="compte">Claude compose les repas et remplit ton panier Carrefour en tenant compte du stock.</p></header>
-  <form id="f-drive" class="form">
-    <div class="duo">
-      <label>Personnes<input name="personnes" type="number" min="1" max="12" value="${f.nb_personnes}" inputmode="numeric"></label>
-      <label>Repas à prévoir<input name="repas" type="number" min="1" max="30" value="5" inputmode="numeric"></label>
-    </div>
-    <label>Budget max (€)<input name="budget" type="number" min="5" step="1" value="${+f.budget_drive}" inputmode="decimal"></label>
-    <label><span>Aliments refusés <small>séparés par des virgules</small></span>
-      <input name="refuses" value="${esc((f.aliments_refuses || []).join(", "))}" placeholder="ex : champignons, olives"></label>
-    <label><span>Envies ou contraintes <small>facultatif</small></span>
-      <textarea name="envies" rows="2" placeholder="ex : repas rapides le soir, un plat à emporter au boulot"></textarea></label>
-    <button class="btn">Copier la demande pour Claude</button>
-    <a class="btn btn-sec" href="https://claude.ai/new" target="_blank" rel="noopener">Ouvrir Claude</a>
-  </form>
-  <p class="discret">La demande copiée contient votre stock actuel, ce qui est sous le seuil et vos préférences. Colle-la dans Claude : il propose les recettes, vérifie les prix et remplit le panier du Drive. Il ne reste qu'à choisir le créneau et payer.</p>`;
+// ---------- Onglet Drive (en 3 étapes) ----------
+// 1. Paramètres  2. Choix des repas (changer, choisir)  3. Courses comparées au stock  puis texte à copier
+const CLE_DRIVE = "stock-maison-drive-v1";
+function etatDrive() {
+  if (!S.drive) {
+    try { S.drive = JSON.parse(localStorage.getItem(CLE_DRIVE)); } catch { S.drive = null; }
+    if (!S.drive || !S.drive.params) S.drive = nouveauDrive();
+  }
+  // Retire les recettes supprimées entre-temps
+  const ids = new Set(S.recettes.map((r) => r.id));
+  if (S.recettes.length) S.drive.selection = S.drive.selection.filter((id) => ids.has(id));
+  return S.drive;
+}
+function nouveauDrive() {
+  const f = S.foyer || {};
+  return { etape: 1, params: { personnes: f.nb_personnes || 2, repas: 5, budget: +f.budget_drive || 50, refuses: (f.aliments_refuses || []).join(", "), envies: "" },
+    selection: [], vus: [], decoches: [], texte: "" };
+}
+function sauverDrive() { try { localStorage.setItem(CLE_DRIVE, JSON.stringify(S.drive)); } catch {} }
+
+const refusesDe = (D) => D.params.refuses.split(",").map((x) => norm(x)).filter(Boolean);
+function recetteAutorisee(r, refuses) {
+  const textes = [r.nom, ...r.ingredients.map((i) => i.nom)].map(norm);
+  return !refuses.some((x) => textes.some((t) => (" " + t + " ").includes(" " + x + " ") || t.includes(x)));
+}
+const facteurDrive = (r, D) => D.params.personnes / (r.portions || 2);
+const PROTEINES = ["poisson", "volaille", "viande", "végé"];
+
+// Note d'une recette : ce qu'on a déjà, ce qui périme bientôt, variété, pas cuisinée récemment
+function noteRecette(r, D, choisies) {
+  const b = bilanRecette(r, facteurDrive(r, D));
+  let note = b.total ? (b.ok / b.total) * 2 : 0;
+  for (const e of b.etats) {
+    const j = e.p && joursAvant(e.p.peremption);
+    if (e.etat !== "manque" && j !== null && j <= 5) note += 0.6;
+  }
+  if (r.derniere_fois && (Date.now() - new Date(r.derniere_fois)) / 864e5 < 10) note -= 1;
+  const prot = (r.tags || []).find((t) => PROTEINES.includes(t));
+  if (prot) note -= 0.35 * choisies.filter((c) => (c.tags || []).includes(prot)).length;
+  note += (D.alea?.[r.id] ?? 0);
+  return note;
+}
+function candidats(D, exclure = []) {
+  const refuses = refusesDe(D);
+  return S.recettes.filter((r) => !exclure.includes(r.id) && recetteAutorisee(r, refuses));
+}
+function meilleure(D, choisies, exclure) {
+  const c = candidats(D, exclure);
+  if (!c.length) return null;
+  return c.map((r) => ({ r, n: noteRecette(r, D, choisies) })).sort((a, b) => b.n - a.n)[0].r;
 }
 
-function texteDrive(fd) {
-  const nomEmp = (id) => S.emplacements.find((e) => e.id === id)?.nom ?? "Sans emplacement";
-  const stock = S.produits.filter((p) => +p.quantite > 0)
-    .map((p) => `- ${p.nom} : ${fmtQ(p.quantite)} ${p.unite} (${nomEmp(p.emplacement_id)}${p.peremption ? `, à consommer avant le ${new Date(p.peremption).toLocaleDateString("fr-FR")}` : ""})`);
-  const bas = S.produits.filter(estBas).map((p) => `- ${p.nom} (reste ${fmtQ(p.quantite)} ${p.unite}, seuil ${fmtQ(p.seuil_min)})`);
+function lancerSelection(fd) {
+  const D = etatDrive();
+  D.params = { personnes: +fd.get("personnes") || 2, repas: Math.max(1, +fd.get("repas") || 1), budget: +fd.get("budget") || 50,
+    refuses: fd.get("refuses").trim(), envies: fd.get("envies").trim() };
+  // Garde les aliments refusés pour la prochaine fois, sur les deux téléphones
+  const liste = D.params.refuses.split(",").map((x) => x.trim()).filter(Boolean);
+  if (liste.join(",") !== (S.foyer.aliments_refuses || []).join(",")) S.store.updateFoyer({ aliments_refuses: liste }).then((f) => (S.foyer = f)).catch(() => {});
+  D.alea = Object.fromEntries(S.recettes.map((r) => [r.id, Math.random() * 0.5]));
+  D.selection = []; D.vus = []; D.decoches = [];
+  const choisies = [];
+  for (let k = 0; k < D.params.repas; k++) {
+    const r = meilleure(D, choisies, choisies.map((x) => x.id));
+    if (!r) break;
+    choisies.push(r);
+  }
+  D.selection = choisies.map((r) => r.id);
+  D.vus = [...D.selection];
+  D.etape = 2; sauverDrive(); rendre(); scrollTo(0, 0);
+  if (D.selection.length < D.params.repas) toast(`Seulement ${D.selection.length} recettes correspondent à tes critères`);
+}
+
+function actionDrive(action, i) {
+  const D = etatDrive();
+  const sel = () => D.selection.map((id) => S.recettes.find((r) => r.id === id)).filter(Boolean);
+  if (action === "changer") {
+    const autres = sel().filter((_, k) => k !== +i);
+    let r = meilleure(D, autres, [...D.selection, ...D.vus]);
+    if (!r) { D.vus = [...D.selection]; r = meilleure(D, autres, D.selection); } // on a tout vu : on recommence le tour
+    if (!r) return toast("Pas d'autre recette disponible");
+    D.selection[+i] = r.id; D.vus.push(r.id); sauverDrive(); rendre();
+  } else if (action === "choisir") feuilleChoixRecette(+i);
+  else if (action === "retirer") { D.selection.splice(+i, 1); sauverDrive(); rendre(); }
+  else if (action === "ajouter") {
+    const r = meilleure(D, sel(), [...D.selection]);
+    if (!r) return toast("Pas d'autre recette disponible");
+    D.selection.push(r.id); D.vus.push(r.id); sauverDrive(); rendre();
+  } else if (action === "etape") { D.etape = +i; sauverDrive(); rendre(); scrollTo(0, 0); }
+  else if (action === "valider") {
+    D.texte = texteDrive(D); D.etape = 4; sauverDrive(); rendre(); scrollTo(0, 0);
+    copier(D.texte, "Demande copiée : colle-la dans Claude");
+  } else if (action === "copier") copier(D.texte, "Demande copiée");
+  else if (action === "nouveau") { S.drive = nouveauDrive(); sauverDrive(); rendre(); scrollTo(0, 0); }
+}
+
+function feuilleChoixRecette(i) {
+  const D = etatDrive();
+  const autres = D.selection.filter((_, k) => k !== i).map((id) => S.recettes.find((r) => r.id === id)).filter(Boolean);
+  const liste = candidats(D, D.selection.filter((_, k) => k !== i)).map((r) => ({ r, n: noteRecette(r, D, autres), b: bilanRecette(r, facteurDrive(r, D)) }))
+    .sort((a, b) => b.n - a.n);
+  const { sh, fermer } = ouvrirFeuille(`
+    <form class="form">
+      <div class="feuille-tete"><h2>Choisir une recette</h2><button type="button" class="lien" data-fermer>Fermer</button></div>
+      <label class="recherche">${icLoupe}<input id="cherche-choix" type="search" placeholder="Chercher" data-pas-focus aria-label="Chercher une recette"></label>
+      <ul class="choix">${liste.map(({ r, b }) => `
+        <li data-nom="${esc(norm(r.nom + " " + r.ingredients.map((x) => x.nom).join(" ")))}"><button type="button" class="choix-ligne ${D.selection[i] === r.id ? "actuelle" : ""}" data-choix="${r.id}">
+          <span class="nom">${esc(r.nom)}</span>
+          <span class="meta">${metaRecette(r)}${b.total ? `, ${b.ok}/${b.total} en stock` : ""}</span>
+        </button></li>`).join("")}</ul>
+    </form>`, async () => "garder");
+  sh.querySelectorAll("[data-choix]").forEach((b) => (b.onclick = () => {
+    D.selection[i] = b.dataset.choix; if (!D.vus.includes(b.dataset.choix)) D.vus.push(b.dataset.choix);
+    sauverDrive(); fermer(); rendre();
+  }));
+  $("#cherche-choix", sh).oninput = (ev) => {
+    const q = norm(ev.target.value);
+    sh.querySelectorAll(".choix li").forEach((li) => (li.hidden = q && !li.dataset.nom.includes(q)));
+  };
+}
+
+// Liste de courses : besoins des recettes moins le stock, plus les essentiels sous le seuil
+function listeCourses(D) {
+  const recettes = D.selection.map((id) => S.recettes.find((r) => r.id === id)).filter(Boolean);
+  const besoins = new Map(), basiques = new Set();
+  const famille = (u) => ({ g: "g", kg: "g", mL: "mL", cl: "mL", L: "mL" }[u] || u || "pièce");
+  for (const r of recettes) {
+    const f = facteurDrive(r, D);
+    for (const ing of r.ingredients) {
+      if (ing.quantite == null) { basiques.add(ing.nom); continue; }
+      const p = produitPour(ing);
+      const cle = (p ? "p:" + p.id : "n:" + mots(ing.nom).join(" ")) + "|" + famille(ing.unite);
+      const unite = famille(ing.unite) === "g" ? "g" : famille(ing.unite) === "mL" ? "mL" : ing.unite || "pièce";
+      const b = besoins.get(cle) || { cle, nom: ing.nom, unite, quantite: 0, recettes: [], ing: { ...ing, unite } };
+      b.quantite += convertir(ing.quantite * f, ing.unite, unite) ?? ing.quantite * f;
+      if (!b.recettes.includes(r.nom)) b.recettes.push(r.nom);
+      besoins.set(cle, b);
+    }
+  }
+  const acheter = [], enStock = [];
+  for (const b of besoins.values()) {
+    const { q, ps } = dispoPour(b.ing);
+    b.produit = ps[0] || null;
+    if (ps.length && q == null) { b.dispoTexte = `${qte(+ps[0].quantite, ps[0].unite)}, quantité à vérifier`; enStock.push(b); continue; }
+    const reste = b.quantite - (q || 0);
+    if (reste <= 1e-9) { b.dispoTexte = `${qte(+q.toFixed(2), b.unite)} en stock`; enStock.push(b); }
+    else { b.reste = arrondir(reste, b.unite); b.dispo = q || 0; acheter.push(b); }
+  }
+  const essentiels = S.produits.filter(estBas).filter((p) => !acheter.some((a) => a.produit?.id === p.id))
+    .map((p) => ({ cle: "e:" + p.id, nom: p.nom, essentiel: true, reste: Math.max(+p.seuil_min - +p.quantite, 0) || 1, unite: p.unite }));
+  const tri = (a, b) => a.nom.localeCompare(b.nom, "fr");
+  return { recettes, acheter: acheter.sort(tri), essentiels, enStock: enStock.sort(tri), basiques: [...basiques].sort((a, b) => a.localeCompare(b, "fr")) };
+}
+const arrondir = (q, u) => (u === "g" || u === "mL" ? Math.ceil(q / 10) * 10 : Math.ceil(q * 2 - 1e-9) / 2);
+const PLURIELS = { "boîte": "boîtes", pot: "pots", sachet: "sachets", paquet: "paquets", bouteille: "bouteilles", tranche: "tranches", gousse: "gousses" };
+const qte = (q, u) => `${fmtQ(q)}${u && u !== "pièce" ? " " + (+q > 1 && PLURIELS[u] ? PLURIELS[u] : u) : ""}`;
+
+function etapesDrive(n) {
+  const noms = ["Paramètres", "Repas", "Courses"];
+  return `<ol class="etapes-drive" aria-label="Étapes">${noms.map((x, k) => `<li class="${k + 1 === n ? "en-cours" : k + 1 < n ? "faite" : ""}" ${k + 1 === n ? 'aria-current="step"' : ""}><span>${k + 1}</span>${x}</li>`).join("")}</ol>`;
+}
+
+function vueDrive() {
+  const D = etatDrive();
+  if (S.recettesErreur || !S.recettes.length) return `<header class="entete"><h1>Préparer un drive</h1></header>
+    <div class="vide"><p>Il faut des recettes pour préparer un drive. Ajoute-en dans l'onglet Recettes.</p></div>`;
+  if (D.etape === 2) return vueDriveRepas(D);
+  if (D.etape === 3) return vueDriveCourses(D);
+  if (D.etape === 4) return vueDriveTexte(D);
+  const p = D.params;
+  return `
+  <header class="entete"><h1>Préparer un drive</h1>
+    <p class="compte">L'appli propose des repas selon ton stock, tu valides, puis elle calcule ce qu'il faut acheter.</p></header>
+  ${etapesDrive(1)}
+  <form id="f-drive" class="form">
+    <div class="duo">
+      <label>Personnes<input name="personnes" type="number" min="1" max="12" value="${p.personnes}" inputmode="numeric"></label>
+      <label>Repas à prévoir<input name="repas" type="number" min="1" max="21" value="${p.repas}" inputmode="numeric"></label>
+    </div>
+    <label>Budget max (€)<input name="budget" type="number" min="5" step="1" value="${p.budget}" inputmode="decimal"></label>
+    <label><span>Aliments refusés <small>séparés par des virgules</small></span>
+      <input name="refuses" value="${esc(p.refuses)}" placeholder="ex : champignons, olives"></label>
+    <label><span>Envies ou contraintes <small>facultatif, transmis à Claude</small></span>
+      <textarea name="envies" rows="2" placeholder="ex : repas rapides le soir">${esc(p.envies)}</textarea></label>
+    <button class="btn">Proposer des repas</button>
+  </form>`;
+}
+
+function vueDriveRepas(D) {
+  const sel = D.selection.map((id) => S.recettes.find((r) => r.id === id)).filter(Boolean);
+  return `
+  <header class="entete"><h1>Les repas</h1>
+    <p class="compte">${sel.length} repas pour ${D.params.personnes} personne${D.params.personnes > 1 ? "s" : ""}. Change ceux qui ne te plaisent pas.</p></header>
+  ${etapesDrive(2)}
+  <ul class="liste-recettes">${sel.map((r, i) => {
+    const b = bilanRecette(r, facteurDrive(r, D));
+    return `
+    <li class="repas">
+      <button class="recette" data-recette="${r.id}">
+        <span class="nom">${esc(r.nom)}</span>
+        <span class="meta">${metaRecette(r)}</span>
+        <span class="dispo">${b.ok === b.total ? `<span class="tag tag-ok">Tout est en stock</span>` : `${b.ok} sur ${b.total} déjà en stock`}</span>
+        <span class="jauge" style="--pc:${b.total ? Math.round((b.ok / b.total) * 100) : 0}%"></span>
+      </button>
+      <div class="repas-actions">
+        <button class="lien" data-drive="changer" data-i="${i}">Changer</button>
+        <button class="lien" data-drive="choisir" data-i="${i}">Choisir</button>
+        <button class="lien lien-discret" data-drive="retirer" data-i="${i}" aria-label="Retirer ${esc(r.nom)}">Retirer</button>
+      </div>
+    </li>`; }).join("")}
+  </ul>
+  <button class="btn btn-sec btn-ajouter-repas" data-drive="ajouter">Ajouter un repas</button>
+  <div class="barre-actions">
+    <button class="btn btn-sec" data-drive="etape" data-i="1">Retour</button>
+    <button class="btn" data-drive="etape" data-i="3" ${sel.length ? "" : "disabled"}>Valider les repas</button>
+  </div>`;
+}
+
+function vueDriveCourses(D) {
+  const L = listeCourses(D);
+  const coche = (cle) => !D.decoches.includes(cle);
+  const ligne = (a) => `
+    <li class="article ${coche(a.cle) ? "" : "decoche"}"><label>
+      <input type="checkbox" data-article="${esc(a.cle)}" ${coche(a.cle) ? "checked" : ""}>
+      <span class="article-texte"><b>${esc(a.nom)}</b> <span class="article-q">${qte(a.reste, a.unite)}</span>
+        <small>${a.essentiel ? "Essentiel sous le seuil" : `${a.dispo ? `déjà ${qte(+a.dispo.toFixed(2), a.unite)} en stock, ` : ""}pour ${a.recettes.map(esc).join(", ")}`}</small></span>
+    </label></li>`;
+  const nb = [...L.acheter, ...L.essentiels].filter((a) => coche(a.cle)).length;
+  return `
+  <header class="entete"><h1>Les courses</h1>
+    <p class="compte">${nb} article${nb > 1 ? "s" : ""} à acheter, budget ${D.params.budget} €. Décoche ce dont tu n'as pas besoin.</p></header>
+  ${etapesDrive(3)}
+  <section class="groupe"><h2>À acheter</h2>
+    ${L.acheter.length ? `<ul class="liste articles">${L.acheter.map(ligne).join("")}</ul>` : `<p class="discret">Tout ce qu'il faut pour ces repas est déjà en stock.</p>`}
+  </section>
+  ${L.essentiels.length ? `<section class="groupe"><h2>Essentiels à racheter</h2><ul class="liste articles">${L.essentiels.map(ligne).join("")}</ul></section>` : ""}
+  ${L.enStock.length ? `<section class="groupe"><h2>Déjà en stock</h2><ul class="liste deja">${L.enStock.map((a) => `
+    <li><span><b>${esc(a.nom)}</b> ${qte(+a.quantite.toFixed(2), a.unite)}</span><small>${esc(a.produit?.nom ?? "")} : ${esc(a.dispoTexte)}</small></li>`).join("")}</ul></section>` : ""}
+  ${L.basiques.length ? `<section class="groupe"><h2>Basiques à avoir</h2><p class="discret">${L.basiques.map(esc).join(", ")}</p></section>` : ""}
+  <div class="barre-actions">
+    <button class="btn btn-sec" data-drive="etape" data-i="2">Retour</button>
+    <button class="btn" data-drive="valider">Valider la demande</button>
+  </div>`;
+}
+
+function vueDriveTexte(D) {
+  return `
+  <header class="entete"><h1>Demande prête</h1>
+    <p class="compte">Le texte est copié. Colle-le dans une conversation avec Claude : il remplit ton panier Carrefour sans dépasser le budget.</p></header>
+  <textarea class="texte-drive" readonly rows="14" aria-label="Texte de la demande">${esc(D.texte)}</textarea>
+  <div class="form">
+    <button class="btn" data-drive="copier">Copier à nouveau</button>
+    <a class="btn btn-sec" href="https://claude.ai/new" target="_blank" rel="noopener">Ouvrir Claude</a>
+    <button class="btn btn-sec" data-drive="etape" data-i="3">Modifier les courses</button>
+    <button class="lien" data-drive="nouveau">Commencer un nouveau drive</button>
+  </div>`;
+}
+
+function texteDrive(D) {
+  const L = listeCourses(D), p = D.params;
+  const coche = (a) => !D.decoches.includes(a.cle);
+  const achats = L.acheter.filter(coche), essentiels = L.essentiels.filter(coche);
   return [
-    `Prépare mon drive Carrefour (Carrefour Market Rive-de-Gier) avec l'appli Stock Maison.`,
+    `Remplis mon panier Drive Carrefour (Carrefour Market Rive-de-Gier) avec cette liste préparée dans l'appli Stock Maison.`,
     ``,
-    `- Personnes : ${fd.get("personnes")}`,
-    `- Repas à prévoir : ${fd.get("repas")}`,
-    `- Budget maximum : ${fd.get("budget")} €`,
-    `- Aliments refusés : ${fd.get("refuses") || "aucun"}`,
-    fd.get("envies") ? `- Envies / contraintes : ${fd.get("envies")}` : null,
+    `Budget maximum : ${p.budget} €. Repas pour ${p.personnes} personne${p.personnes > 1 ? "s" : ""}.`,
+    p.refuses ? `Aliments refusés : ${p.refuses}.` : null,
+    p.envies ? `Envies / contraintes : ${p.envies}.` : null,
     ``,
-    `Produits « toujours en stock » à racheter :`,
-    ...(bas.length ? bas : ["- aucun"]),
+    `Repas prévus (${L.recettes.length}) :`,
+    ...L.recettes.map((r) => `- ${r.nom}`),
     ``,
-    `Ce que j'ai déjà (à utiliser en priorité, ne pas racheter) :`,
-    ...stock,
+    `À acheter :`,
+    ...(achats.length ? achats.map((a) => `- ${a.nom} : ${qte(a.reste, a.unite)}`) : ["- rien pour les repas"]),
+    essentiels.length ? `` : null,
+    essentiels.length ? `Essentiels à racheter :` : null,
+    ...essentiels.map((a) => `- ${a.nom} : ${qte(a.reste, a.unite)}`),
     ``,
-    S.recettes.length ? `` : null,
-    S.recettes.length ? `Recettes déjà enregistrées dans l'appli (à varier) : ${S.recettes.map((r) => r.nom).join(", ")}` : null,
+    L.enStock.length ? `Déjà en stock, ne pas acheter : ${L.enStock.map((a) => a.nom).join(", ")}.` : null,
+    L.basiques.length ? `Basiques que j'ai normalement (sel, huile, épices…) : ${L.basiques.join(", ")}.` : null,
     ``,
-    `Propose les recettes, enregistre-les dans l'appli Stock Maison, puis remplis mon panier sans dépasser le budget.`,
+    `Consignes : prends les produits au meilleur rapport qualité-prix (marque Carrefour si possible), arrondis aux conditionnements vendus et ne dépasse pas le budget. Si ça dépasse, dis-moi quoi retirer avant de remplir le panier.`,
   ].filter((l) => l !== null).join("\n");
 }
 
@@ -336,6 +572,8 @@ function brancher() {
     if (!t) return;
     if (t.dataset.onglet) { S.onglet = t.dataset.onglet; rendre(); scrollTo(0, 0); return; }
     if (t.dataset.filtre) { S.filtre = t.dataset.filtre; rendre(); return; }
+    if (t.dataset.filtreRecette) { S.filtreRecette = t.dataset.filtreRecette; rendre(); return; }
+    if (t.dataset.drive) return actionDrive(t.dataset.drive, t.dataset.i);
     if (t.dataset.delta) return changerQuantite(t.dataset.id, +t.dataset.delta);
     if (t.dataset.edit) return feuilleProduit(S.produits.find((p) => p.id === t.dataset.edit));
     if (t.dataset.emp) return feuilleEmplacement(t.dataset.emp === "nouveau" ? null : S.emplacements.find((e) => e.id === t.dataset.emp));
@@ -349,11 +587,20 @@ function brancher() {
       return copier(txt, "Liste copiée");
     }
   };
+  const rr = $("#recherche-recette");
+  if (rr) rr.oninput = debounce(() => { S.rechercheRecette = rr.value; const pos = rr.selectionStart; rendre(); const n = $("#recherche-recette"); n.focus(); n.setSelectionRange(pos, pos); }, 300);
   const r = $("#recherche");
   if (r) r.oninput = debounce(() => { S.recherche = r.value; $("#liste-stock").innerHTML = listeStock(); }, 120);
 
   const fd = $("#f-drive");
-  if (fd) fd.onsubmit = (ev) => { ev.preventDefault(); copier(texteDrive(new FormData(fd)), "Demande copiée : colle-la dans Claude"); };
+  if (fd) fd.onsubmit = (ev) => { ev.preventDefault(); lancerSelection(new FormData(fd)); };
+  app.onchange = (ev) => {
+    const c = ev.target.closest("input[data-article]");
+    if (!c) return;
+    const D = etatDrive(), k = c.dataset.article;
+    D.decoches = c.checked ? D.decoches.filter((x) => x !== k) : [...new Set([...D.decoches, k])];
+    sauverDrive(); c.closest("li").classList.toggle("decoche", !c.checked);
+  };
 
   const fp = $("#f-prefs");
   if (fp) fp.onsubmit = async (ev) => {
@@ -477,27 +724,56 @@ function convertir(q, de, vers) {
   return a && b && a[0] === b[0] ? (q * a[1]) / b[1] : null;
 }
 
-function produitPour(ing) {
+const MOTS_VIDES = new Set(["de", "du", "des", "d", "au", "aux", "a", "la", "le", "les", "l", "en", "et", "g", "cl", "ml", "kg"]);
+// Mots qui indiquent un produit transformé : « Tomates » ne doit pas trouver « Concentré de tomates »
+const MOTS_TRANSFO = new Set(["concentre", "sauce", "jus", "puree", "soupe", "coulis", "frito", "gamelle", "friand", "chip", "ketchup", "mayonnaise", "avec", "veloute", "pizza", "gateau", "biscuit"]);
+// Synonymes simples : « Steaks hachés » = « Viande hachée »
+const SYNONYMES = { steak: "viande", hachee: "hache" };
+const mots = (t) => norm(t).split(" ").filter((m) => m && !MOTS_VIDES.has(m) && !/^\d+$/.test(m)).map((m) => SYNONYMES[m] || m);
+
+// Tous les produits du stock qui correspondent à un ingrédient, du plus proche au moins proche
+function produitsPour(ing) {
   const lie = ing.produit_id && S.produits.find((p) => p.id === ing.produit_id);
-  if (lie) return lie;
-  const n = norm(ing.nom);
-  if (!n) return null;
-  const candidats = S.produits.filter((p) => { const m = norm(p.nom); return m === n || m.startsWith(n + " ") || n.startsWith(m + " ") || m.includes(" " + n) || m.split(" ")[0] === n.split(" ")[0]; });
-  return candidats.sort((a, b) => (+b.quantite > 0) - (+a.quantite > 0) || (norm(a.nom) === n ? -1 : 1))[0] || null;
+  const mi = mots(ing.nom);
+  if (!mi.length) return lie ? [lie] : [];
+  const res = [];
+  for (const p of S.produits) {
+    if (lie && p.id === lie.id) continue;
+    const mp = mots(p.nom);
+    if (!mp.length) continue;
+    const inclus = (a, b) => a.every((m) => b.includes(m));
+    let ok = false;
+    if (inclus(mi, mp)) ok = !mp.some((m) => MOTS_TRANSFO.has(m) && !mi.includes(m));       // « Thon » -> « Thon au naturel »
+    else if (inclus(mp, mi)) ok = mp[0] === mi[0] && !mp.some((m) => MOTS_TRANSFO.has(m));  // « Pâtes complètes » -> « Pâtes »
+    if (ok) res.push({ p, ecart: Math.abs(mp.length - mi.length) });
+  }
+  res.sort((a, b) => (+b.p.quantite > 0) - (+a.p.quantite > 0) || a.ecart - b.ecart);
+  return [...(lie ? [lie] : []), ...res.map((x) => x.p)];
+}
+const produitPour = (ing) => produitsPour(ing)[0] || null;
+
+// Quantité disponible en stock pour un ingrédient, dans l'unité de l'ingrédient
+// (null = en stock mais quantité non comparable, ex. « 1 sachet » face à « 150 g »)
+function dispoPour(ing) {
+  const ps = produitsPour(ing).filter((p) => +p.quantite > 0);
+  if (!ps.length) return { q: 0, ps };
+  let total = 0, comparable = false;
+  for (const p of ps) { const c = convertir(+p.quantite, p.unite, ing.unite); if (c != null) { total += c; comparable = true; } }
+  return { q: comparable ? total : null, ps };
 }
 
-// État d'un ingrédient : ok | peu | inconnu | manque
+// État d'un ingrédient : ok | peu | manque
 function etatIngredient(ing, facteur = 1) {
-  const p = produitPour(ing);
-  if (!p || +p.quantite <= 0) return { etat: "manque", p };
-  const besoin = convertir(ing.quantite == null ? null : ing.quantite * facteur, ing.unite, p.unite);
-  if (besoin == null) return { etat: "ok", p };
-  return { etat: +p.quantite >= besoin - 1e-9 ? "ok" : "peu", p, besoin };
+  const { q, ps } = dispoPour(ing);
+  const p = ps[0] || produitPour(ing);
+  if (!ps.length) return { etat: "manque", p };
+  if (q == null || ing.quantite == null) return { etat: "ok", p };
+  return { etat: q >= ing.quantite * facteur - 1e-9 ? "ok" : "peu", p, dispo: q };
 }
 
-function bilanRecette(r) {
+function bilanRecette(r, facteur = 1) {
   // Les ingrédients sans quantité (sel, poivre, huile…) ne bloquent pas une recette
-  const etats = r.ingredients.filter((i) => i.quantite != null).map((i) => ({ i, ...etatIngredient(i) }));
+  const etats = r.ingredients.filter((i) => i.quantite != null).map((i) => ({ i, ...etatIngredient(i, facteur) }));
   const ok = etats.filter((e) => e.etat === "ok").length;
   return { etats, ok, total: etats.length, manquants: etats.filter((e) => e.etat !== "ok") };
 }
@@ -506,14 +782,16 @@ function vueRecettes() {
   if (S.recettesErreur) return `
     <header class="entete"><h1>Recettes</h1></header>
     <div class="vide"><p>Les recettes ne sont pas encore activées dans la base de données. Relance le fichier <b>supabase/schema.sql</b> dans le SQL Editor de Supabase, puis rouvre l'appli.</p></div>`;
-  const liste = S.recettes.map((r) => ({ r, b: bilanRecette(r) }))
+  const q = norm(S.rechercheRecette);
+  const liste = S.recettes.filter((r) => (S.filtreRecette === "tout" || (r.tags || []).includes(S.filtreRecette)) && (!q || norm(r.nom).includes(q) || r.ingredients.some((i) => norm(i.nom).includes(q))))
+    .map((r) => ({ r, b: bilanRecette(r) }))
     .sort((x, y) => (y.b.ok / (y.b.total || 1)) - (x.b.ok / (x.b.total || 1)) || x.r.nom.localeCompare(y.r.nom, "fr"));
   const faisables = liste.filter((x) => x.b.total && x.b.ok === x.b.total);
   const autres = liste.filter((x) => !(x.b.total && x.b.ok === x.b.total));
   const carte = ({ r, b }) => `
     <li><button class="recette" data-recette="${r.id}">
       <span class="nom">${esc(r.nom)}</span>
-      <span class="meta">${[r.temps_min ? `${r.temps_min} min` : "", `${r.portions} pers.`].filter(Boolean).join(", ")}</span>
+      <span class="meta">${metaRecette(r)}</span>
       <span class="dispo">${b.total ? (b.ok === b.total ? `<span class="tag tag-ok">Tout est en stock</span>`
         : `<span class="manque">Manque : ${b.manquants.map((m) => esc(m.i.nom.toLowerCase())).join(", ")}</span>`) : ""}</span>
       ${b.total ? `<span class="jauge" style="--pc:${Math.round((b.ok / b.total) * 100)}%" aria-label="${b.ok} ingrédients sur ${b.total} en stock"></span>` : ""}
@@ -523,16 +801,21 @@ function vueRecettes() {
     <div><h1>Recettes</h1><p class="compte">${S.recettes.length} recette${S.recettes.length > 1 ? "s" : ""}, triées selon ce que vous avez</p></div>
     <button class="btn-ajout" id="btn-ajout-recette">${icPlus}<span>Ajouter</span></button>
   </header>
-  ${!liste.length ? `<div class="vide"><p>Aucune recette pour l'instant. Celles de tes drives s'ajouteront ici, ou ajoute les tiennes.</p></div>` : ""}
+  <div class="filtres">${[["tout", "Toutes"], ...TAGS].map(([k, v]) => `<button class="puce ${S.filtreRecette === k ? "active" : ""}" data-filtre-recette="${k}">${v}</button>`).join("")}</div>
+  <label class="recherche">${icLoupe}<input id="recherche-recette" type="search" placeholder="Chercher une recette ou un ingrédient" value="${esc(S.rechercheRecette)}" aria-label="Chercher une recette"></label>
+  ${!liste.length ? `<div class="vide"><p>${S.recettes.length ? "Aucune recette ne correspond." : "Aucune recette pour l'instant. Ajoute les tiennes avec le bouton Ajouter."}</p></div>` : ""}
   ${faisables.length ? `<section class="groupe"><h2>Faisables avec le stock</h2><ul class="liste-recettes">${faisables.map(carte).join("")}</ul></section>` : ""}
   ${autres.length ? `<section class="groupe"><h2>${faisables.length ? "Il manque quelque chose" : "Toutes les recettes"}</h2><ul class="liste-recettes">${autres.map(carte).join("")}</ul></section>` : ""}`;
 }
+
+const TAGS = [["rapide", "Rapide"], ["végé", "Végé"], ["poisson", "Poisson"], ["volaille", "Volaille"], ["viande", "Viande"]];
+const metaRecette = (r) => [r.temps_min ? `${r.temps_min} min` : "", ...(r.tags || []).filter((t) => t !== "healthy").map((t) => (TAGS.find((x) => x[0] === t) || [, t])[1])].filter(Boolean).join(", ");
 
 function ligneIngredient(ing, facteur) {
   const { etat, p } = etatIngredient(ing, facteur);
   const q = ing.quantite == null ? "" : `${fmtQ(+(ing.quantite * facteur).toFixed(2))} ${ing.unite && ing.unite !== "pièce" ? esc(ing.unite) : ""}`;
   if (ing.quantite == null && etat === "manque") return `<li class="ing ing-base"><span class="point" aria-hidden="true"></span><span class="ing-nom">${esc(ing.nom)}</span><small>Basique, non suivi</small></li>`;
-  const info = etat === "manque" ? "Pas en stock" : `${etat === "peu" ? "Pas assez" : "En stock"} : ${fmtQ(p.quantite)} ${esc(p.unite)}`;
+  const info = etat === "manque" ? "Pas en stock" : `${etat === "peu" ? "Pas assez" : "En stock"} : ${esc(p.nom)}, ${fmtQ(p.quantite)} ${esc(p.unite)}`;
   return `<li class="ing ing-${etat}"><span class="point" aria-hidden="true"></span><span class="ing-nom"><b>${q.trim()}</b> ${esc(ing.nom)}</span><small>${info}</small></li>`;
 }
 
