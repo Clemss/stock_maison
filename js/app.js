@@ -251,7 +251,7 @@ function etatDrive() {
 }
 function nouveauDrive() {
   const f = S.foyer || {};
-  return { etape: 1, params: { personnes: f.nb_personnes || 2, repas: 5, budget: +f.budget_drive || 50, refuses: (f.aliments_refuses || []).join(", "), envies: "", sansVege: true },
+  return { etape: 1, params: { personnes: f.nb_personnes || 2, repas: 5, budget: +f.budget_drive || 50, refuses: (f.aliments_refuses || []).join(", "), envies: "", sansVege: true, gamelles: 0 },
     selection: [], vus: [], decoches: [], forces: [], ajouts: {}, texte: "" };
 }
 function sauverDrive() { try { localStorage.setItem(CLE_DRIVE, JSON.stringify(S.drive)); } catch {} }
@@ -261,7 +261,9 @@ function recetteAutorisee(r, refuses) {
   const textes = [r.nom, ...r.ingredients.map((i) => i.nom)].map(norm);
   return !refuses.some((x) => textes.some((t) => (" " + t + " ").includes(" " + x + " ") || t.includes(x)));
 }
-const facteurDrive = (r, D) => D.params.personnes / (r.portions || 2);
+const estGamelle = (r) => (r.tags || []).includes("gamelle");
+// Un dîner = un repas pour le foyer ; un plat gamelle = 2 midis pour le foyer (ex. 4 boîtes à 2)
+const facteurDrive = (r, D) => (D.params.personnes * (estGamelle(r) ? 2 : 1)) / (r.portions || 2);
 const PROTEINES = ["poisson", "volaille", "viande", "végé"];
 
 // ---------- Calculs du drive : stock partagé entre les repas, coût estimé, budget ----------
@@ -393,15 +395,15 @@ function coutAutres(D) {
 // Pour choisir, un article dont on ne connaît pas le prix compte 2 € (évite de croire une recette gratuite)
 const PRIX_INCONNU = 2;
 const coutPrudent = (ids, D) => { const c = coutRepas(ids, D); return c.total + PRIX_INCONNU * c.inconnus; };
-function choisirRepas(D, ids, exclure, nbRestants = 1) {
+function choisirRepas(D, ids, exclure, nbRestants = 1, type = null) {
   const base = coutPrudent(ids, D);
   const budget = D.params.budget - coutAutres(D);
   const restant = budget - base;
   const cible = Math.max(restant / Math.max(nbRestants, 1), 1);
-  const ref = Math.max(D.params.budget / Math.max(D.params.repas, 1), 1);
+  const ref = Math.max(D.params.budget / Math.max(D.params.repas + (D.params.gamelles || 0), 1), 1);
   const { reserve } = simulerRepas(ids, D);
   const choisies = recettesDe(ids);
-  const evals = candidats(D, [...ids, ...exclure]).map((r) => {
+  const evals = candidats(D, [...ids, ...exclure], type).map((r) => {
     const cout = coutPrudent([...ids, r.id], D) - base;
     let note = noteRecette(r, D, choisies, reserve) - 0.8 * (cout / ref);
     if (cout > cible) note -= 1.5 * ((cout - cible) / ref);
@@ -426,18 +428,20 @@ function noteRecette(r, D, choisies, reserve) {
   note += (D.alea?.[r.id] ?? 0);
   return note;
 }
-function candidats(D, exclure = []) {
+function candidats(D, exclure = [], type = null) {
   const refuses = refusesDe(D);
   const sansVege = D.params.sansVege !== false;
   // Une recette sans ingrédient chiffré (ex. une recette notée sans quantités) ne peut pas être planifiée
   return S.recettes.filter((r) => !exclure.includes(r.id) && r.ingredients.some((i) => i.quantite != null)
+    && (type == null || (type === "gamelle") === estGamelle(r))
     && recetteAutorisee(r, refuses) && !(sansVege && (r.tags || []).includes("végé")));
 }
 
 
 function lancerSelection(fd) {
   const D = etatDrive();
-  D.params = { personnes: +fd.get("personnes") || 2, repas: Math.max(1, +fd.get("repas") || 1), budget: +fd.get("budget") || 50,
+  D.params = { personnes: +fd.get("personnes") || 2, repas: Math.max(0, +fd.get("repas") || 0), budget: +fd.get("budget") || 50,
+    gamelles: Math.max(0, +fd.get("gamelles") || 0),
     refuses: fd.get("refuses").trim(), envies: fd.get("envies").trim(), sansVege: fd.get("sansVege") === "on" };
   // Garde les aliments refusés pour la prochaine fois, sur les deux téléphones
   const liste = D.params.refuses.split(",").map((x) => x.trim()).filter(Boolean);
@@ -445,18 +449,19 @@ function lancerSelection(fd) {
   D.alea = Object.fromEntries(S.recettes.map((r) => [r.id, Math.random() * 0.5]));
   D.selection = []; D.vus = []; D.decoches = []; D.forces = [];
   CACHE.clear();
-  const ids = [];
-  for (let k = 0; k < D.params.repas; k++) {
-    const e = choisirRepas(D, ids, [], D.params.repas - k);
-    if (!e) break;
-    ids.push(e.r.id);
+  const ids = [], total = D.params.repas + D.params.gamelles;
+  if (!total) return toast("Indique au moins un dîner ou un plat gamelle");
+  for (let k = 0; k < total; k++) {
+    const type = k < D.params.gamelles ? "gamelle" : "diner";
+    const e = choisirRepas(D, ids, [], total - k, type);
+    if (e) ids.push(e.r.id);
   }
   D.selection = ids;
   D.vus = [...D.selection];
   D.etape = 2; sauverDrive(); rendre(); scrollTo(0, 0);
-  const total = coutRepas(ids, D).total + coutAutres(D);
-  if (D.selection.length < D.params.repas) toast(`Seulement ${D.selection.length} recettes correspondent à tes critères`);
-  else if (total > D.params.budget) toast(`Impossible de tenir ${D.params.budget} € avec ${D.params.repas} repas : estimation ${euros(total)}`);
+  const estim = coutRepas(ids, D).total + coutAutres(D);
+  if (D.selection.length < total) toast(`Seulement ${D.selection.length} recettes correspondent à tes critères`);
+  else if (estim > D.params.budget) toast(`Impossible de tenir ${D.params.budget} € avec ces repas : estimation ${euros(estim)}`);
 }
 
 function actionDrive(action, i) {
@@ -464,8 +469,10 @@ function actionDrive(action, i) {
   const sel = () => D.selection.map((id) => S.recettes.find((r) => r.id === id)).filter(Boolean);
   if (action === "changer") {
     const autres = D.selection.filter((_, k) => k !== +i);
-    let e = choisirRepas(D, autres, [...D.selection, ...D.vus]);
-    if (!e) { D.vus = [...D.selection]; e = choisirRepas(D, autres, D.selection); } // on a tout vu : on recommence le tour
+    const actuel = S.recettes.find((r) => r.id === D.selection[+i]);
+    const type = actuel && estGamelle(actuel) ? "gamelle" : "diner"; // une gamelle est remplacée par une gamelle
+    let e = choisirRepas(D, autres, [...D.selection, ...D.vus], 1, type);
+    if (!e) { D.vus = [...D.selection]; e = choisirRepas(D, autres, D.selection, 1, type); } // on a tout vu : on recommence le tour
     if (!e) return toast("Pas d'autre recette disponible");
     D.selection[+i] = e.r.id; D.vus.push(e.r.id); sauverDrive(); rendre();
     if (!e.tient) toast("Aucune autre recette ne tient dans le budget : voici la moins chère");
@@ -475,7 +482,7 @@ function actionDrive(action, i) {
   else if (action === "ranger-libre") feuilleRanger([]);
   else if (action === "retirer") { D.selection.splice(+i, 1); sauverDrive(); rendre(); }
   else if (action === "ajouter") {
-    const e = choisirRepas(D, D.selection, []);
+    const e = choisirRepas(D, D.selection, [], 1, i === "gamelle" ? "gamelle" : "diner");
     if (!e) return toast("Pas d'autre recette disponible");
     D.selection.push(e.r.id); D.vus.push(e.r.id); sauverDrive(); rendre();
     if (!e.tient) toast("Ce repas fait dépasser le budget");
@@ -739,9 +746,12 @@ function vueDrive() {
   <form id="f-drive" class="form">
     <div class="duo">
       <label>Personnes<input name="personnes" type="number" min="1" max="12" value="${p.personnes}" inputmode="numeric"></label>
-      <label>Repas à prévoir<input name="repas" type="number" min="1" max="21" value="${p.repas}" inputmode="numeric"></label>
+      <label>Dîners<input name="repas" type="number" min="0" max="21" value="${p.repas}" inputmode="numeric"></label>
     </div>
-    <label>Budget max (€)<input name="budget" type="number" min="5" step="1" value="${p.budget}" inputmode="decimal"></label>
+    <div class="duo">
+      <label><span>Plats gamelle <small>1 plat = 2 midis</small></span><input name="gamelles" type="number" min="0" max="10" value="${p.gamelles || 0}" inputmode="numeric"></label>
+      <label>Budget max (€)<input name="budget" type="number" min="5" step="1" value="${p.budget}" inputmode="decimal"></label>
+    </div>
     <label><span>Aliments refusés <small>séparés par des virgules</small></span>
       <input name="refuses" value="${esc(p.refuses)}" placeholder="ex : champignons, olives"></label>
     <label class="interrupteur"><input type="checkbox" name="sansVege" ${p.sansVege !== false ? "checked" : ""}>
@@ -764,13 +774,18 @@ function jaugeBudget(D, total, inconnus) {
   </div>`;
 }
 
+function resumeRepas(sel, D) {
+  const g = sel.filter(estGamelle).length, d = sel.length - g, n = D.params.personnes;
+  return [d ? `${d} dîner${d > 1 ? "s" : ""}` : "", g ? `${g} plat${g > 1 ? "s" : ""} gamelle (${g * 2} midis)` : ""].filter(Boolean).join(" et ") + ` pour ${n} personne${n > 1 ? "s" : ""}`;
+}
+
 function vueDriveRepas(D) {
   const sel = recettesDe(D.selection);
   const { bilans } = simulerRepas(D.selection, D);
   const c = coutRepas(D.selection, D), autres = coutAutres(D), total = c.total + autres;
   return `
   <header class="entete"><h1>Les repas</h1>
-    <p class="compte">${sel.length} repas pour ${D.params.personnes} personne${D.params.personnes > 1 ? "s" : ""}. Change ceux qui ne te plaisent pas.</p></header>
+    <p class="compte">${resumeRepas(sel, D)}. Change ceux qui ne te plaisent pas.</p></header>
   ${etapesDrive(2)}
   ${jaugeBudget(D, total, c.inconnus)}
   <ul class="liste-recettes">${sel.map((r, i) => {
@@ -792,7 +807,10 @@ function vueDriveRepas(D) {
       </div>
     </li>`; }).join("")}
   </ul>
-  <button class="btn btn-sec btn-ajouter-repas" data-drive="ajouter">Ajouter un repas</button>
+  <div class="duo btn-ajouter-repas">
+    <button class="btn btn-sec" data-drive="ajouter" data-i="diner">Ajouter un dîner</button>
+    <button class="btn btn-sec" data-drive="ajouter" data-i="gamelle">Ajouter une gamelle</button>
+  </div>
   <div class="barre-actions">
     <button class="btn btn-sec" data-drive="etape" data-i="1">Retour</button>
     <button class="btn" data-drive="etape" data-i="3" ${sel.length ? "" : "disabled"}>Valider les repas</button>
@@ -872,7 +890,7 @@ function texteDrive(D) {
     p.envies ? `Envies / contraintes : ${p.envies}.` : null,
     ``,
     `Repas prévus (${L.recettes.length}) :`,
-    ...L.recettes.map((r) => `- ${r.nom}`),
+    ...L.recettes.map((r) => `- ${r.nom}${estGamelle(r) ? " (gamelles du midi, à congeler)" : ""}`),
     ``,
     `À acheter :`,
     ...(achats.length ? achats.map((a) => `- ${a.nom} : ${qte(a.reste, a.unite)}`) : ["- rien pour les repas"]),
@@ -1197,7 +1215,7 @@ function vueRecettes() {
   ${autres.length ? `<section class="groupe"><h2>${faisables.length ? "Il manque quelque chose" : "Toutes les recettes"}</h2><ul class="liste-recettes">${autres.map(carte).join("")}</ul></section>` : ""}`;
 }
 
-const TAGS = [["rapide", "Rapide"], ["végé", "Végé"], ["poisson", "Poisson"], ["volaille", "Volaille"], ["viande", "Viande"]];
+const TAGS = [["gamelle", "Gamelle"], ["rapide", "Rapide"], ["végé", "Végé"], ["poisson", "Poisson"], ["volaille", "Volaille"], ["viande", "Viande"]];
 const metaRecette = (r) => [r.temps_min ? `${r.temps_min} min` : "", ...(r.tags || []).filter((t) => t !== "healthy").map((t) => (TAGS.find((x) => x[0] === t) || [, t])[1])].filter(Boolean).join(", ");
 
 function ligneIngredient(ing, facteur) {

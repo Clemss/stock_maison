@@ -333,3 +333,4 @@ code { font-size: .9em; }
 .article-prix { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--encre); }
 .article-pack { color: var(--encre-2); }
 .meta.trop { color: var(--rouge); }
+.duo { align-items: end; }
