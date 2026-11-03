@@ -193,3 +193,22 @@ create table if not exists prix_ingredients (
 alter table prix_ingredients enable row level security;
 drop policy if exists "prix du foyer" on prix_ingredients;
 create policy "prix du foyer" on prix_ingredients for all using (foyer_id in (select mes_foyers())) with check (foyer_id in (select mes_foyers()));
+
+-- V5 — historique des drives validés (recettes à cuisiner, partagé entre les téléphones)
+create table if not exists drives (
+  id uuid primary key default gen_random_uuid(),
+  foyer_id uuid not null references foyers(id) on delete cascade,
+  cree_le timestamptz not null default now(),
+  params jsonb not null default '{}',
+  recettes uuid[] not null default '{}',
+  cuisinees uuid[] not null default '{}',
+  texte text,
+  cout_estime numeric(7,2),
+  statut text not null default 'valide' check (statut in ('valide','range')),
+  range_le timestamptz
+);
+create index if not exists drives_foyer_idx on drives(foyer_id, cree_le desc);
+alter table drives enable row level security;
+drop policy if exists "drives du foyer" on drives;
+create policy "drives du foyer" on drives for all using (foyer_id in (select mes_foyers())) with check (foyer_id in (select mes_foyers()));
+do $$ begin alter publication supabase_realtime add table drives; exception when others then null; end $$;

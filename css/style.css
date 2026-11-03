@@ -334,3 +334,11 @@ code { font-size: .9em; }
 .article-pack { color: var(--encre-2); }
 .meta.trop { color: var(--rouge); }
 .duo { align-items: end; }
+
+/* Historique des drives */
+.a-cuisiner .repas { border-color: color-mix(in srgb, var(--frigo) 40%, var(--trait)); }
+.historique li + li { border-top: 1px solid var(--trait); }
+.histo { width: 100%; text-align: left; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 11px 14px; border: 0; background: none; }
+.histo .nom { font-size: 16px; }
+.histo .meta { font-size: 13px; color: var(--encre-2); }
+.choix-ligne.fait .nom { color: var(--frigo); }

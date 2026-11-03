@@ -95,6 +95,14 @@ function demoStore() {
     async deleteProduit(id) { db.produits = db.produits.filter((p) => p.id !== id); save(); emit(); },
     async listRecettes() { return JSON.parse(JSON.stringify(db.recettes)); },
     async listPrix() { return db.prix || []; },
+    async listDrives() { return [...(db.drives || [])].sort((a, b) => b.cree_le.localeCompare(a.cree_le)).slice(0, 30); },
+    async saveDrive(d) {
+      db.drives ??= [];
+      if (d.id) Object.assign(db.drives.find((x) => x.id === d.id) || {}, d);
+      else { d = { cuisinees: [], statut: "valide", ...d, id: uid(), foyer_id: db.foyer.id, cree_le: new Date().toISOString() }; db.drives.push(d); }
+      save(); emit(); return d.id;
+    },
+    async deleteDrive(id) { db.drives = (db.drives || []).filter((x) => x.id !== id); save(); emit(); },
     async saveRecette(r, ingredients) {
       const ings = ingredients.map((i) => ({ ...i, id: i.id || uid() }));
       if (r.id) Object.assign(db.recettes.find((x) => x.id === r.id), r, { ingredients: ings });
@@ -162,6 +170,13 @@ async function supabaseStore(url, key) {
     },
     async setQuantite(id, quantite) { ok(await sb.from("produits").update({ quantite, maj_le: new Date().toISOString() }).eq("id", id)); },
     async deleteProduit(id) { ok(await sb.from("produits").delete().eq("id", id)); },
+    async listDrives() { return ok(await sb.from("drives").select("*").order("cree_le", { ascending: false }).limit(30)); },
+    async saveDrive(d) {
+      const { id, ...champs } = d;
+      if (id) { ok(await sb.from("drives").update(champs).eq("id", id)); return id; }
+      return ok(await sb.from("drives").insert({ ...champs, foyer_id: foyerId }).select("id").single()).id;
+    },
+    async deleteDrive(id) { ok(await sb.from("drives").delete().eq("id", id)); },
     async listPrix() { return ok(await sb.from("prix_ingredients").select("nom, prix, quantite, unite, produit, estime, maj")); },
     async listRecettes() {
       const rows = ok(await sb.from("recettes").select("*, recette_ingredients(*)").order("nom"));
@@ -193,6 +208,7 @@ async function supabaseStore(url, key) {
         .on("postgres_changes", { event: "*", schema: "public", table: "produits" }, cb)
         .on("postgres_changes", { event: "*", schema: "public", table: "emplacements" }, cb)
         .on("postgres_changes", { event: "*", schema: "public", table: "recettes" }, cb)
+        .on("postgres_changes", { event: "*", schema: "public", table: "drives" }, cb)
         .subscribe();
       return () => sb.removeChannel(ch);
     },

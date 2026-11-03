@@ -51,8 +51,9 @@ async function demarrer() {
 async function charger() {
   CACHE.clear();
   S.store.listPrix?.().then((x) => { S.prix = x; CACHE.clear(); if (S.onglet === "drive") rendre(); }).catch(() => (S.prix = []));
-  [S.emplacements, S.produits, S.foyer, S.recettes] = await Promise.all([S.store.listEmplacements(), S.store.listProduits(), S.store.getFoyer(),
-    S.store.listRecettes().then((r) => { S.recettesErreur = null; return r; }).catch((e) => { S.recettesErreur = e.message; return []; })]);
+  [S.emplacements, S.produits, S.foyer, S.recettes, S.drives] = await Promise.all([S.store.listEmplacements(), S.store.listProduits(), S.store.getFoyer(),
+    S.store.listRecettes().then((r) => { S.recettesErreur = null; return r; }).catch((e) => { S.recettesErreur = e.message; return []; }),
+    S.store.listDrives ? S.store.listDrives().catch(() => []) : []]);
   verifierAlertes();
   rendre();
 }
@@ -490,6 +491,7 @@ function actionDrive(action, i) {
   else if (action === "valider") {
     D.texte = texteDrive(D); D.etape = 4; sauverDrive(); rendre(); scrollTo(0, 0);
     copier(D.texte, "Demande copiée : colle-la dans Claude");
+    enregistrerDrive(D);
   } else if (action === "copier") copier(D.texte, "Demande copiée");
   else if (action === "nouveau") { const params = D.params; S.drive = { ...nouveauDrive(), params }; sauverDrive(); rendre(); scrollTo(0, 0); }
 }
@@ -620,7 +622,10 @@ function feuilleRanger(articles) {
       const n = await rangerDansStock(sh);
       if (!n) { toast("Aucun produit coché"); return "garder"; }
       const D = etatDrive();
-      if (D.etape === 4) { const params = D.params; S.drive = { ...nouveauDrive(), params }; sauverDrive(); }
+      if (D.etape === 4) {
+        if (D.driveId) await S.store.saveDrive({ id: D.driveId, statut: "range", range_le: new Date().toISOString() }).catch(() => {});
+        const params = D.params; S.drive = { ...nouveauDrive(), params }; sauverDrive();
+      }
       toast(`${n} produit${n > 1 ? "s" : ""} mis en stock`);
       S.onglet = "stock";
     });
@@ -762,7 +767,8 @@ function vueDrive() {
   </form>
   <section class="groupe"><h2>Courses faites sans l'appli ?</h2>
     <button class="btn btn-sec" data-drive="ranger-libre">Ranger des courses dans le stock</button>
-  </section>`;
+  </section>
+  ${sectionHistorique()}`;
 }
 
 function jaugeBudget(D, total, inconnus) {
@@ -881,6 +887,7 @@ function texteDrive(D) {
   const enStock = L.enStock.filter((a) => !D.forces.includes(a.cle));
   const retenus = [...L.acheter.filter(coche), ...forces, ...essentiels];
   const estimation = retenus.reduce((s, a) => s + (a.prix?.cout || 0), 0);
+  D.estimation = +estimation.toFixed(2);
   return [
     `Remplis mon panier Drive Carrefour (Carrefour Market Rive-de-Gier) avec cette liste préparée dans l'appli Stock Maison.`,
     ``,
@@ -903,6 +910,88 @@ function texteDrive(D) {
     ``,
     `Consignes : prends les produits au meilleur rapport qualité-prix (marque Carrefour si possible), arrondis aux conditionnements vendus et ne dépasse pas le budget. Si ça dépasse, dis-moi quoi retirer avant de remplir le panier.`,
   ].filter((l) => l !== null).join("\n");
+}
+
+// ---------- Historique des drives ----------
+const dateCourte = (d) => new Date(d).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
+
+async function enregistrerDrive(D) {
+  try {
+    D.driveId = await S.store.saveDrive({ ...(D.driveId ? { id: D.driveId } : {}), params: D.params, recettes: D.selection,
+      texte: D.texte, cout_estime: D.estimation ?? null });
+    sauverDrive();
+    S.drives = await S.store.listDrives();
+  } catch (e) { toast("Historique non enregistré : " + e.message); }
+}
+
+// Coche une recette comme cuisinée dans le drive le plus récent qui l'attend
+async function marquerCuisinee(rid, driveId) {
+  const d = (S.drives || []).find((x) => (!driveId || x.id === driveId) && restantes(x).includes(rid));
+  if (!d) return;
+  d.cuisinees = [...(d.cuisinees || []), rid];
+  await S.store.saveDrive({ id: d.id, cuisinees: d.cuisinees }).catch(() => {});
+}
+
+// Recettes d'un drive pas encore cuisinées (une recette prévue deux fois compte deux fois)
+function restantes(d) {
+  const faites = [...(d.cuisinees || [])], res = [];
+  for (const id of d.recettes || []) { const k = faites.indexOf(id); if (k >= 0) faites.splice(k, 1); else res.push(id); }
+  return res;
+}
+
+function sectionACuisiner() {
+  const limite = Date.now() - 30 * 864e5;
+  const items = (S.drives || []).filter((d) => new Date(d.cree_le) > limite)
+    .flatMap((d) => restantes(d).map((rid) => ({ d, r: S.recettes.find((x) => x.id === rid) }))).filter((x) => x.r);
+  if (!items.length) return "";
+  return `<section class="groupe a-cuisiner"><h2>À cuisiner (${items.length})</h2>
+    <ul class="liste-recettes">${items.map(({ d, r }) => `
+      <li class="repas">
+        <button class="recette" data-recette="${r.id}">
+          <span class="nom">${esc(r.nom)}</span>
+          <span class="meta">${metaRecette(r)}</span>
+          <span class="meta">Drive du ${dateCourte(d.cree_le)}</span>
+        </button>
+        <div class="repas-actions"><button class="lien" data-recette="${r.id}">Voir la recette</button>
+          <button class="lien lien-discret" data-fait="${d.id}|${r.id}">Déjà fait</button></div>
+      </li>`).join("")}</ul></section>`;
+}
+
+function sectionHistorique() {
+  const ds = S.drives || [];
+  if (!ds.length) return "";
+  return `<section class="groupe"><h2>Derniers drives</h2>
+    <ul class="liste historique">${ds.slice(0, 10).map((d) => {
+      const n = (d.recettes || []).length, faits = n - restantes(d).length;
+      return `<li><button class="histo" data-histo="${d.id}">
+        <span class="nom">Drive du ${dateCourte(d.cree_le)}</span>
+        <span class="meta">${n} repas, ${faits} cuisiné${faits > 1 ? "s" : ""}${d.cout_estime != null ? `, ≈ ${euros(+d.cout_estime)}` : ""}</span>
+        <span class="tag ${d.statut === "range" ? "tag-ok" : "tag-date"}">${d.statut === "range" ? "Courses rangées" : "Courses à récupérer"}</span>
+      </button></li>`; }).join("")}</ul></section>`;
+}
+
+function feuilleDrive(id) {
+  const d = (S.drives || []).find((x) => x.id === id);
+  if (!d) return;
+  const aCocher = [...(d.cuisinees || [])]; // les premières occurrences de chaque recette sont les cuisinées
+  const lignes = (d.recettes || []).map((rid) => {
+    const r = S.recettes.find((x) => x.id === rid);
+    const k = aCocher.indexOf(rid), fait = k >= 0;
+    if (fait) aCocher.splice(k, 1);
+    return r ? `<li><button type="button" class="choix-ligne ${fait ? "fait" : ""}" data-voir="${r.id}">
+      <span class="nom">${fait ? "✓ " : ""}${esc(r.nom)}</span><span class="meta">${metaRecette(r)}${fait ? ", cuisinée" : ""}</span></button></li>` : "";
+  }).join("");
+  const { sh, fermer } = ouvrirFeuille(`
+    <form class="form">
+      <div class="feuille-tete"><h2>Drive du ${dateCourte(d.cree_le)}</h2><button type="button" class="lien" data-fermer>Fermer</button></div>
+      <p class="discret sans-marge">${d.statut === "range" ? `Courses rangées le ${dateCourte(d.range_le || d.cree_le)}` : "Courses pas encore rangées"}${d.cout_estime != null ? `, estimation ${euros(+d.cout_estime)}` : ""}.</p>
+      <ul class="choix">${lignes}</ul>
+      ${d.texte ? `<button type="button" class="btn btn-sec" data-copier-drive>Copier à nouveau la demande</button>` : ""}
+      <button type="button" class="btn btn-danger" data-supprimer>Supprimer de l'historique</button>
+    </form>`, async () => "garder",
+    async () => { if (!confirm("Supprimer ce drive de l'historique ?")) return false; await S.store.deleteDrive(d.id); toast("Drive supprimé"); return true; });
+  sh.querySelectorAll("[data-voir]").forEach((b) => (b.onclick = () => feuilleRecette(S.recettes.find((r) => r.id === b.dataset.voir))));
+  const c = $("[data-copier-drive]", sh); if (c) c.onclick = () => copier(d.texte, "Demande copiée");
 }
 
 // ---------- Onglet Réglages ----------
@@ -964,6 +1053,8 @@ function brancher() {
     if (t.dataset.filtre) { S.filtre = t.dataset.filtre; rendre(); return; }
     if (t.dataset.filtreRecette) { S.filtreRecette = t.dataset.filtreRecette; rendre(); return; }
     if (t.dataset.drive) return actionDrive(t.dataset.drive, t.dataset.i);
+    if (t.dataset.fait) { const [d, rid] = t.dataset.fait.split("|"); await marquerCuisinee(rid, d); toast("Recette marquée comme cuisinée"); return charger(); }
+    if (t.dataset.histo) return feuilleDrive(t.dataset.histo);
     if (t.dataset.delta) return changerQuantite(t.dataset.id, +t.dataset.delta);
     if (t.dataset.edit) return feuilleProduit(S.produits.find((p) => p.id === t.dataset.edit));
     if (t.dataset.emp) return feuilleEmplacement(t.dataset.emp === "nouveau" ? null : S.emplacements.find((e) => e.id === t.dataset.emp));
@@ -1208,6 +1299,7 @@ function vueRecettes() {
     <div><h1>Recettes</h1><p class="compte">${S.recettes.length} recette${S.recettes.length > 1 ? "s" : ""}, triées selon ce que vous avez</p></div>
     <button class="btn-ajout" id="btn-ajout-recette">${icPlus}<span>Ajouter</span></button>
   </header>
+  ${sectionACuisiner()}
   <div class="filtres">${[["tout", "Toutes"], ...TAGS].map(([k, v]) => `<button class="puce ${S.filtreRecette === k ? "active" : ""}" data-filtre-recette="${k}">${v}</button>`).join("")}</div>
   <label class="recherche">${icLoupe}<input id="recherche-recette" type="search" placeholder="Chercher une recette ou un ingrédient" value="${esc(S.rechercheRecette)}" aria-label="Chercher une recette"></label>
   ${!liste.length ? `<div class="vide"><p>${S.recettes.length ? "Aucune recette ne correspond." : "Aucune recette pour l'instant. Ajoute les tiennes avec le bouton Ajouter."}</p></div>` : ""}
@@ -1283,6 +1375,7 @@ function feuilleCuisine(r, portions) {
       const retraits = r.ingredients.map((ing, n) => ({ ingredient_id: ing.id, produit_id: d.get(`produit-${n}`), retrait: +d.get(`retrait-${n}`) || 0 }))
         .filter((t) => t.produit_id);
       await S.store.cuisiner(r.id, retraits);
+      await marquerCuisinee(r.id);
       const n = retraits.filter((t) => t.retrait > 0).length;
       toast(n ? `Stock mis à jour : ${n} produit${n > 1 ? "s" : ""}` : "Recette notée comme cuisinée");
     });
