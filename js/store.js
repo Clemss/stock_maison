@@ -94,6 +94,7 @@ function demoStore() {
     async setQuantite(id, quantite) { const p = db.produits.find((x) => x.id === id); if (p) { p.quantite = quantite; p.maj_le = new Date().toISOString(); save(); } },
     async deleteProduit(id) { db.produits = db.produits.filter((p) => p.id !== id); save(); emit(); },
     async listRecettes() { return JSON.parse(JSON.stringify(db.recettes)); },
+    async listPrix() { return db.prix || []; },
     async saveRecette(r, ingredients) {
       const ings = ingredients.map((i) => ({ ...i, id: i.id || uid() }));
       if (r.id) Object.assign(db.recettes.find((x) => x.id === r.id), r, { ingredients: ings });
@@ -161,6 +162,7 @@ async function supabaseStore(url, key) {
     },
     async setQuantite(id, quantite) { ok(await sb.from("produits").update({ quantite, maj_le: new Date().toISOString() }).eq("id", id)); },
     async deleteProduit(id) { ok(await sb.from("produits").delete().eq("id", id)); },
+    async listPrix() { return ok(await sb.from("prix_ingredients").select("nom, prix, quantite, unite, produit, estime, maj")); },
     async listRecettes() {
       const rows = ok(await sb.from("recettes").select("*, recette_ingredients(*)").order("nom"));
       return rows.map(({ recette_ingredients, ...r }) => ({ ...r, ingredients: (recette_ingredients || []).sort((a, b) => a.ordre - b.ordre) }));

@@ -181,3 +181,15 @@ exception when others then null; end $$;
 
 -- V3 — étiquettes de recettes (végé, poisson, rapide…)
 alter table recettes add column if not exists tags text[] not null default '{}';
+
+-- V4 — prix Carrefour des ingrédients (rempli par supabase/seed_prix.sql)
+create table if not exists prix_ingredients (
+  id uuid primary key default gen_random_uuid(),
+  foyer_id uuid not null references foyers(id) on delete cascade,
+  nom text not null, prix numeric(7,2) not null, quantite numeric(8,2) not null, unite text not null,
+  produit text, estime boolean not null default false, maj date not null default current_date,
+  unique (foyer_id, nom)
+);
+alter table prix_ingredients enable row level security;
+drop policy if exists "prix du foyer" on prix_ingredients;
+create policy "prix du foyer" on prix_ingredients for all using (foyer_id in (select mes_foyers())) with check (foyer_id in (select mes_foyers()));

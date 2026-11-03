@@ -1,5 +1,5 @@
 // Service worker : l'appli s'ouvre même sans réseau (les données Supabase restent en ligne)
-const CACHE = "stock-maison-v8";
+const CACHE = "stock-maison-v9";
 const FICHIERS = ["./", "index.html", "css/style.css", "js/app.js", "js/store.js", "config.js",
   "manifest.webmanifest", "icons/icon-192.png", "icons/apple-touch-icon.png"];
 

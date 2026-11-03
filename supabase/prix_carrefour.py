@@ -1,0 +1,98 @@
+# Prix relevés au Carrefour Market Rive-de-Gier (Drive) le 03/11/2026.
+# (nom de l'ingrédient, prix du conditionnement €, quantité du conditionnement, unité, produit Carrefour, estimé ?)
+P = [
+ ("Escalopes de poulet", 4.33, 310, "g", "Filets de poulet blanc Carrefour Classic' 310 g", False),
+ ("Escalopes de dinde", 3.94, 250, "g", "Escalopes de dinde Carrefour Classic' x2", False),
+ ("Cuisses de poulet", 5.49, 4, "pièce", "Cuisses de poulet Duc 1 kg", False),
+ ("Blanc de poulet", 1.45, 4, "tranche", "Blanc de poulet Carrefour 4 tranches", False),
+ ("Pavés de saumon", 4.99, 2, "pièce", "Pavés de saumon Simpl 2x110 g", False),
+ ("Filets de cabillaud", 8.70, 200, "g", "Dos de cabillaud Delpierre 200 g", False),
+ ("Filets de colin", 7.99, 1000, "g", "Filets de colin d'Alaska Simpl 10x100 g (surgelé)", False),
+ ("Filets de lieu noir", 7.99, 1000, "g", "Remplacé par colin d'Alaska surgelé (lieu noir introuvable)", True),
+ ("Crevettes décortiquées", 7.60, 250, "g", "Queues de crevettes Carrefour Le Marché 250 g", False),
+ ("Steaks hachés 5 %", 5.69, 2, "pièce", "Steaks hachés 5 % Filière Qualité Carrefour 2x125 g", False),
+ ("Viande hachée 5 %", 8.99, 500, "g", "Viande hachée 5 % Carrefour Le Marché 500 g", False),
+ ("Steaks de bœuf", 6.80, 2, "pièce", "Pavés de bœuf Charal x2", False),
+ ("Émincé de bœuf", 6.50, 300, "g", "Prix estimé (introuvable au Drive)", True),
+ ("Filet mignon de porc", 7.50, 400, "g", "Prix estimé (introuvable au Drive)", True),
+ ("Pavés de truite", 5.50, 2, "pièce", "Prix estimé (introuvable au Drive)", True),
+ ("Steaks de thon", 7.50, 2, "pièce", "Prix estimé (introuvable au Drive)", True),
+ ("Filets de maquereau", 4.00, 2, "pièce", "Prix estimé (frais introuvable au Drive)", True),
+ ("Thon au naturel", 1.05, 1, "boîte", "Morceaux de thon au naturel Simpl 130 g", False),
+ ("Sardines", 1.29, 1, "boîte", "Sardines à l'huile Carrefour Classic'", False),
+ ("Œufs", 1.85, 10, "pièce", "Œufs frais Simpl x10", False),
+ ("Tofu ferme", 2.59, 250, "g", "Tofu nature bio Céréal 2x125 g", False),
+ ("Courgette", 1.99, 4, "pièce", "Courgettes Simpl 1 kg", False),
+ ("Poivron", 1.89, 2, "pièce", "Poivrons bicolores Simpl x2", False),
+ ("Oignon", 1.19, 8, "pièce", "Oignons jaunes 1 kg", False),
+ ("Oignon rouge", 0.99, 4, "pièce", "Oignons rouges Simpl 500 g", False),
+ ("Carottes", 2.49, 16, "pièce", "Carottes Simpl 2 kg", False),
+ ("Tomates", 0.57, 1, "pièce", "Tomates grappe vrac 3,99 €/kg", False),
+ ("Tomates cerises", 0.99, 250, "g", "Tomates cerises Simpl 250 g", False),
+ ("Brocoli", 1.99, 2, "pièce", "Brocolis en fleurettes Carrefour Classic' 900 g (surgelé)", False),
+ ("Haricots verts", 1.35, 440, "g", "Haricots verts très fins Carrefour Classic' 440 g", False),
+ ("Pommes de terre", 0.99, 6, "pièce", "Pommes de terre Simpl 1 kg", False),
+ ("Patates douces", 0.80, 1, "pièce", "Patates douces vrac 2,39 €/kg", False),
+ ("Épinards frais", 2.00, 400, "g", "Épinards 400 g", False),
+ ("Avocat", 1.69, 1, "pièce", "Avocat à la pièce", False),
+ ("Concombre", 1.59, 1, "pièce", "Concombre à la pièce", False),
+ ("Citron", 0.69, 1, "pièce", "Citron jaune à la pièce", False),
+ ("Citron vert", 0.69, 1, "pièce", "Prix estimé (citron jaune)", True),
+ ("Champignons", 0.99, 200, "g", "Champignons blancs 200 g", False),
+ ("Salade verte", 1.79, 1, "pièce", "Salade batavia", False),
+ ("Salade romaine", 1.79, 1, "pièce", "Salade à la pièce", False),
+ ("Poireau", 0.70, 1, "pièce", "Poireaux vrac 2,79 €/kg", False),
+ ("Asperges vertes", 2.55, 185, "g", "Asperges vertes Carrefour Classic' bocal 185 g", False),
+ ("Chou rouge", 2.79, 1, "pièce", "Chou rouge à la pièce", False),
+ ("Potiron", 2.00, 1000, "g", "Potimarron à la pièce", False),
+ ("Pamplemousse", 0.99, 1, "pièce", "Pomelo rouge", False),
+ ("Échalote", 0.99, 8, "pièce", "Échalotes vrac 250 g", False),
+ ("Menthe fraîche", 1.29, 1, "pièce", "Prix estimé", True),
+ ("Riz basmati", 1.39, 500, "g", "Riz basmati Carrefour Extra 500 g", False),
+ ("Riz arborio", 1.55, 500, "g", "Riz arborio Carrefour Extra 500 g", False),
+ ("Quinoa", 2.89, 400, "g", "Quinoa Carrefour Sensation 400 g", False),
+ ("Boulgour", 1.59, 450, "g", "Boulgour Carrefour Classic' 450 g", False),
+ ("Pâtes complètes", 1.25, 500, "g", "Fusilli complets Carrefour Extra 500 g", False),
+ ("Ebly", 2.09, 500, "g", "Ebly 500 g", False),
+ ("Nouilles de riz", 2.15, 250, "g", "Nouilles de riz Carrefour Sensation 250 g", False),
+ ("Lentilles corail", 1.75, 500, "g", "Lentilles corail Carrefour Classic' 500 g", False),
+ ("Lentilles vertes", 1.65, 500, "g", "Lentilles vertes Carrefour Classic' 500 g", False),
+ ("Tortillas complètes", 2.49, 6, "pièce", "Wraps blé complet Carrefour Sensation x6", False),
+ ("Pain complet", 1.49, 20, "tranche", "Pain de mie complet Carrefour Classic' 500 g", False),
+ ("Bouillon cube", 1.35, 32, "pièce", "Bouillon Kub Or Maggi x32", False),
+ ("Yaourt grec", 1.35, 4, "pot", "Yaourts à la grecque Carrefour Extra 4x150 g", False),
+ ("Crème légère", 2.29, 600, "mL", "Crème légère Carrefour Classic' 3x20 cl", False),
+ ("Feta", 2.55, 200, "g", "Feta Carrefour Extra 200 g", False),
+ ("Emmental râpé", 1.65, 200, "g", "Emmental râpé Carrefour Classic' 200 g", False),
+ ("Parmesan", 2.19, 100, "g", "Parmigiano Reggiano râpé Carrefour Extra 100 g", False),
+ ("Fromage frais", 1.89, 300, "g", "Fromage frais nature Carrefour Classic' 300 g", False),
+ ("Lait demi-écrémé", 0.94, 1000, "mL", "Lait demi-écrémé Carrefour (pack 6 L à 5,64 €)", False),
+ ("Lait de coco", 1.69, 1, "boîte", "Lait de coco Carrefour Sensation 400 ml", False),
+ ("Tomates concassées", 0.73, 1, "boîte", "Pulpe de tomate Carrefour Classic' (3x400 g à 2,19 €)", False),
+ ("Concentré de tomates", 2.15, 3, "boîte", "Concentré de tomate Carrefour Classic' 3x70 g", False),
+ ("Tomate frito", 1.55, 1, "boîte", "Remplacé par sauce tomate cuisinée Heinz 520 g", True),
+ ("Pois chiches", 0.75, 1, "boîte", "Pois chiches Carrefour Classic' 265 g", False),
+ ("Haricots rouges", 0.75, 1, "boîte", "Haricots rouges Carrefour Classic' 250 g", False),
+ ("Haricots blancs", 0.89, 1, "boîte", "Haricots blancs Carrefour Classic' 265 g", False),
+ ("Maïs doux", 0.79, 1, "boîte", "Maïs doux Simpl 285 g", False),
+ ("Vin blanc sec", 2.79, 3, "bouteille", "Vin blanc Ribaudour 3x25 cl", False),
+ ("Mélange épices fajitas", 1.59, 1, "sachet", "Épices fajita Old El Paso 30 g", False),
+]
+if __name__ == "__main__":
+    def q(s): return "'" + s.replace("'", "''") + "'"
+    vals = ",\n".join(f"({q(n)},{p},{qq},{q(u)},{q(prod)},{'true' if e else 'false'})" for n, p, qq, u, prod, e in P)
+    print(f"""create table if not exists prix_ingredients (
+  id uuid primary key default gen_random_uuid(),
+  foyer_id uuid not null references foyers(id) on delete cascade,
+  nom text not null, prix numeric(7,2) not null, quantite numeric(8,2) not null, unite text not null,
+  produit text, estime boolean not null default false, maj date not null default current_date,
+  unique (foyer_id, nom)
+);
+alter table prix_ingredients enable row level security;
+drop policy if exists "prix du foyer" on prix_ingredients;
+create policy "prix du foyer" on prix_ingredients for all using (foyer_id in (select mes_foyers())) with check (foyer_id in (select mes_foyers()));
+insert into prix_ingredients (foyer_id, nom, prix, quantite, unite, produit, estime)
+select f.id, v.* from (select id from foyers order by cree_le limit 1) f, (values
+{vals}
+) v(nom, prix, quantite, unite, produit, estime)
+on conflict (foyer_id, nom) do update set prix = excluded.prix, quantite = excluded.quantite, unite = excluded.unite, produit = excluded.produit, estime = excluded.estime, maj = current_date;""")

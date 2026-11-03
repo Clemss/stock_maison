@@ -20,6 +20,8 @@ const bientotPerime = (p) => { const j = joursAvant(p.peremption); return j !== 
 // ------------------------------------------------------------------
 //  État
 // ------------------------------------------------------------------
+// Cache des calculs (rapprochements, coûts) : vidé à chaque changement du stock
+const CACHE = new Map();
 const S = {
   store: null, user: null, foyer: null,
   emplacements: [], produits: [], recettes: [],
@@ -47,6 +49,8 @@ async function demarrer() {
 }
 
 async function charger() {
+  CACHE.clear();
+  S.store.listPrix?.().then((x) => { S.prix = x; CACHE.clear(); if (S.onglet === "drive") rendre(); }).catch(() => (S.prix = []));
   [S.emplacements, S.produits, S.foyer, S.recettes] = await Promise.all([S.store.listEmplacements(), S.store.listProduits(), S.store.getFoyer(),
     S.store.listRecettes().then((r) => { S.recettesErreur = null; return r; }).catch((e) => { S.recettesErreur = e.message; return []; })]);
   verifierAlertes();
@@ -260,9 +264,157 @@ function recetteAutorisee(r, refuses) {
 const facteurDrive = (r, D) => D.params.personnes / (r.portions || 2);
 const PROTEINES = ["poisson", "volaille", "viande", "végé"];
 
+// ---------- Calculs du drive : stock partagé entre les repas, coût estimé, budget ----------
+const UNITES_COMPTEES = new Set(["pièce", "boîte", "pot", "sachet", "paquet", "bouteille", "tranche"]);
+const famille = (u) => ({ g: "g", kg: "g", mL: "mL", cl: "mL", L: "mL" }[u] || u || "pièce");
+const recettesDe = (ids) => ids.map((id) => S.recettes.find((r) => r.id === id)).filter(Boolean);
+
+// Bilan de chaque repas, dans l'ordre : chaque repas « réserve » ce qu'il prend dans le stock,
+// le suivant ne voit que ce qui reste (2 recettes à 300 g de poulet avec 300 g en stock : la 2e en manque).
+function simulerRepas(ids, D, reserveDepart) {
+  const reserve = new Map(reserveDepart || []);
+  const bilans = new Map();
+  for (const r of recettesDe(ids)) {
+    const f = facteurDrive(r, D), etats = [];
+    for (const ing of r.ingredients) {
+      if (ing.quantite == null) continue;
+      const besoin = ing.quantite * f;
+      const ps = produitsPour(ing).filter((p) => +p.quantite - (reserve.get(p.id) || 0) > 1e-9);
+      const comparables = ps.map((p) => ({ p, reste: +p.quantite - (reserve.get(p.id) || 0) }))
+        .map((x) => ({ ...x, conv: convertir(x.reste, x.p.unite, ing.unite) })).filter((x) => x.conv != null);
+      let etat = "manque", manque = besoin;
+      if (comparables.length) {
+        let aPrendre = besoin;
+        for (const x of comparables) {
+          if (aPrendre <= 1e-9) break;
+          const pris = Math.min(aPrendre, x.conv);
+          reserve.set(x.p.id, (reserve.get(x.p.id) || 0) + convertir(pris, ing.unite, x.p.unite));
+          aPrendre -= pris;
+        }
+        manque = Math.max(aPrendre, 0);
+        etat = manque <= 1e-9 ? "ok" : "peu";
+      } else if (ps.length) {
+        // Unités différentes (« 1 bocal » face à « 300 g ») : on compte un conditionnement par repas
+        const p = ps[0];
+        reserve.set(p.id, (reserve.get(p.id) || 0) + (UNITES_COMPTEES.has(p.unite) ? 1 : +p.quantite));
+        etat = "ok"; manque = 0;
+      }
+      etats.push({ i: ing, etat, manque, p: ps[0] || produitPour(ing) });
+    }
+    const ok = etats.filter((e) => e.etat === "ok").length;
+    bilans.set(r.id, { etats, ok, total: etats.length, manquants: etats.filter((e) => e.etat !== "ok") });
+  }
+  return { bilans, reserve };
+}
+
+// Prix relevé pour un ingrédient ou un produit (même rapprochement que pour le stock)
+function prixPour(nom) {
+  const cle = "prix|" + nom;
+  if (CACHE.has(cle)) return CACHE.get(cle);
+  const mi = mots(nom);
+  let res = null;
+  if (mi.length) {
+    const inclus = (a, b) => a.every((m) => b.includes(m));
+    const cands = (S.prix || []).map((x) => ({ x, mp: mots(x.nom) })).filter(({ mp }) => mp.length &&
+      ((inclus(mi, mp) && !mp.some((m) => MOTS_TRANSFO.has(m) && !mi.includes(m))) || (inclus(mp, mi) && mp[0] === mi[0] && !mp.some((m) => MOTS_TRANSFO.has(m)))));
+    cands.sort((a, b) => Math.abs(a.mp.length - mi.length) - Math.abs(b.mp.length - mi.length));
+    res = cands[0]?.x || null;
+  }
+  CACHE.set(cle, res);
+  return res;
+}
+// Coût d'achat arrondi au conditionnement vendu (300 g de poulet = 1 barquette de 310 g)
+function coutAchat(nom, q, unite) {
+  const px = prixPour(nom);
+  if (!px || !(q > 0)) return null;
+  const conv = convertir(q, unite, px.unite);
+  if (conv == null) return null;
+  const nb = Math.max(1, Math.ceil(conv / +px.quantite - 1e-6));
+  return { cout: nb * +px.prix, nb, px };
+}
+const euros = (x) => x.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+
+// Besoins de plusieurs repas additionnés, moins le stock
+function besoinsCourses(ids, D) {
+  const recettes = recettesDe(ids);
+  const besoins = new Map(), basiques = new Set();
+  for (const r of recettes) {
+    const f = facteurDrive(r, D);
+    for (const ing of r.ingredients) {
+      if (ing.quantite == null) { basiques.add(ing.nom); continue; }
+      const p = produitPour(ing);
+      const cle = (p ? "p:" + p.id : "n:" + mots(ing.nom).join(" ")) + "|" + famille(ing.unite);
+      const unite = famille(ing.unite) === "g" ? "g" : famille(ing.unite) === "mL" ? "mL" : ing.unite || "pièce";
+      const b = besoins.get(cle) || { cle, nom: ing.nom, unite, quantite: 0, recettes: [], ing: { ...ing, unite } };
+      b.quantite += convertir(ing.quantite * f, ing.unite, unite) ?? ing.quantite * f;
+      b.recettes.push(r.nom);
+      besoins.set(cle, b);
+    }
+  }
+  const acheter = [], enStock = [];
+  for (const b of besoins.values()) {
+    const { q, ps } = dispoPour(b.ing);
+    b.produit = ps[0] || null;
+    if (ps.length && q == null) {
+      // Unités différentes : un conditionnement en stock couvre un repas
+      const unitesDispo = ps.reduce((s, p) => s + (UNITES_COMPTEES.has(p.unite) ? +p.quantite : 1), 0);
+      const nbRepas = b.recettes.length;
+      if (nbRepas <= unitesDispo) { b.dispoTexte = `${qte(+ps[0].quantite, ps[0].unite)}, quantité à vérifier`; enStock.push(b); continue; }
+      b.reste = arrondir(b.quantite * (nbRepas - unitesDispo) / nbRepas, b.unite); b.dispo = 0;
+      b.dispoTexte = `${qte(+ps[0].quantite, ps[0].unite)} en stock pour ${unitesDispo} repas`;
+      acheter.push(b); continue;
+    }
+    const reste = b.quantite - (q || 0);
+    if (reste <= 1e-9) { b.dispoTexte = `${qte(+q.toFixed(2), b.unite)} en stock`; enStock.push(b); }
+    else { b.reste = arrondir(reste, b.unite); b.dispo = q || 0; acheter.push(b); }
+  }
+  for (const a of acheter) { a.recettes = [...new Set(a.recettes)]; a.prix = coutAchat(a.nom, a.reste, a.unite); }
+  for (const a of enStock) a.recettes = [...new Set(a.recettes)];
+  return { recettes, acheter, enStock, basiques: [...basiques] };
+}
+
+// Coût estimé des courses pour une sélection de repas
+function coutRepas(ids, D) {
+  const cle = "cout|" + ids.join(",") + "|" + D.params.personnes;
+  if (CACHE.has(cle)) return CACHE.get(cle);
+  const B = besoinsCourses(ids, D);
+  const res = { total: B.acheter.reduce((s, a) => s + (a.prix?.cout || 0), 0), inconnus: B.acheter.filter((a) => !a.prix).length };
+  CACHE.set(cle, res);
+  return res;
+}
+// Budget restant pour les repas une fois payés les essentiels et les ajouts
+function coutAutres(D) {
+  const L = listeCourses(D, true);
+  const coche = (a) => !D.decoches.includes(a.cle);
+  return [...L.essentiels, ...L.ajouts].filter(coche).reduce((s, a) => s + (coutAchat(a.nom, a.reste, a.unite)?.cout || 0), 0);
+}
+
+// Choisit le meilleur repas à ajouter à « ids » : note (stock, variété) moins le coût, sans dépasser le budget
+// Pour choisir, un article dont on ne connaît pas le prix compte 2 € (évite de croire une recette gratuite)
+const PRIX_INCONNU = 2;
+const coutPrudent = (ids, D) => { const c = coutRepas(ids, D); return c.total + PRIX_INCONNU * c.inconnus; };
+function choisirRepas(D, ids, exclure, nbRestants = 1) {
+  const base = coutPrudent(ids, D);
+  const budget = D.params.budget - coutAutres(D);
+  const restant = budget - base;
+  const cible = Math.max(restant / Math.max(nbRestants, 1), 1);
+  const ref = Math.max(D.params.budget / Math.max(D.params.repas, 1), 1);
+  const { reserve } = simulerRepas(ids, D);
+  const choisies = recettesDe(ids);
+  const evals = candidats(D, [...ids, ...exclure]).map((r) => {
+    const cout = coutPrudent([...ids, r.id], D) - base;
+    let note = noteRecette(r, D, choisies, reserve) - 0.8 * (cout / ref);
+    if (cout > cible) note -= 1.5 * ((cout - cible) / ref);
+    return { r, cout, note, tient: cout <= restant + 0.01 };
+  });
+  if (!evals.length) return null;
+  const tiennent = evals.filter((e) => e.tient);
+  return (tiennent.length ? tiennent.sort((a, b) => b.note - a.note)[0] : evals.sort((a, b) => a.cout - b.cout)[0]);
+}
+
 // Note d'une recette : ce qu'on a déjà, ce qui périme bientôt, variété, pas cuisinée récemment
-function noteRecette(r, D, choisies) {
-  const b = bilanRecette(r, facteurDrive(r, D));
+function noteRecette(r, D, choisies, reserve) {
+  const b = simulerRepas([r.id], D, reserve).bilans.get(r.id);
   let note = b.total ? (b.ok / b.total) * 2 : 0;
   for (const e of b.etats) {
     const j = e.p && joursAvant(e.p.peremption);
@@ -277,13 +429,11 @@ function noteRecette(r, D, choisies) {
 function candidats(D, exclure = []) {
   const refuses = refusesDe(D);
   const sansVege = D.params.sansVege !== false;
-  return S.recettes.filter((r) => !exclure.includes(r.id) && recetteAutorisee(r, refuses) && !(sansVege && (r.tags || []).includes("végé")));
+  // Une recette sans ingrédient chiffré (ex. une recette notée sans quantités) ne peut pas être planifiée
+  return S.recettes.filter((r) => !exclure.includes(r.id) && r.ingredients.some((i) => i.quantite != null)
+    && recetteAutorisee(r, refuses) && !(sansVege && (r.tags || []).includes("végé")));
 }
-function meilleure(D, choisies, exclure) {
-  const c = candidats(D, exclure);
-  if (!c.length) return null;
-  return c.map((r) => ({ r, n: noteRecette(r, D, choisies) })).sort((a, b) => b.n - a.n)[0].r;
-}
+
 
 function lancerSelection(fd) {
   const D = etatDrive();
@@ -294,36 +444,41 @@ function lancerSelection(fd) {
   if (liste.join(",") !== (S.foyer.aliments_refuses || []).join(",")) S.store.updateFoyer({ aliments_refuses: liste }).then((f) => (S.foyer = f)).catch(() => {});
   D.alea = Object.fromEntries(S.recettes.map((r) => [r.id, Math.random() * 0.5]));
   D.selection = []; D.vus = []; D.decoches = []; D.forces = [];
-  const choisies = [];
+  CACHE.clear();
+  const ids = [];
   for (let k = 0; k < D.params.repas; k++) {
-    const r = meilleure(D, choisies, choisies.map((x) => x.id));
-    if (!r) break;
-    choisies.push(r);
+    const e = choisirRepas(D, ids, [], D.params.repas - k);
+    if (!e) break;
+    ids.push(e.r.id);
   }
-  D.selection = choisies.map((r) => r.id);
+  D.selection = ids;
   D.vus = [...D.selection];
   D.etape = 2; sauverDrive(); rendre(); scrollTo(0, 0);
+  const total = coutRepas(ids, D).total + coutAutres(D);
   if (D.selection.length < D.params.repas) toast(`Seulement ${D.selection.length} recettes correspondent à tes critères`);
+  else if (total > D.params.budget) toast(`Impossible de tenir ${D.params.budget} € avec ${D.params.repas} repas : estimation ${euros(total)}`);
 }
 
 function actionDrive(action, i) {
   const D = etatDrive();
   const sel = () => D.selection.map((id) => S.recettes.find((r) => r.id === id)).filter(Boolean);
   if (action === "changer") {
-    const autres = sel().filter((_, k) => k !== +i);
-    let r = meilleure(D, autres, [...D.selection, ...D.vus]);
-    if (!r) { D.vus = [...D.selection]; r = meilleure(D, autres, D.selection); } // on a tout vu : on recommence le tour
-    if (!r) return toast("Pas d'autre recette disponible");
-    D.selection[+i] = r.id; D.vus.push(r.id); sauverDrive(); rendre();
+    const autres = D.selection.filter((_, k) => k !== +i);
+    let e = choisirRepas(D, autres, [...D.selection, ...D.vus]);
+    if (!e) { D.vus = [...D.selection]; e = choisirRepas(D, autres, D.selection); } // on a tout vu : on recommence le tour
+    if (!e) return toast("Pas d'autre recette disponible");
+    D.selection[+i] = e.r.id; D.vus.push(e.r.id); sauverDrive(); rendre();
+    if (!e.tient) toast("Aucune autre recette ne tient dans le budget : voici la moins chère");
   } else if (action === "choisir") feuilleChoixRecette(+i);
   else if (action === "ajouter-stock") feuilleAjoutStock();
   else if (action === "ranger") feuilleRanger(articlesARanger(D));
   else if (action === "ranger-libre") feuilleRanger([]);
   else if (action === "retirer") { D.selection.splice(+i, 1); sauverDrive(); rendre(); }
   else if (action === "ajouter") {
-    const r = meilleure(D, sel(), [...D.selection]);
-    if (!r) return toast("Pas d'autre recette disponible");
-    D.selection.push(r.id); D.vus.push(r.id); sauverDrive(); rendre();
+    const e = choisirRepas(D, D.selection, []);
+    if (!e) return toast("Pas d'autre recette disponible");
+    D.selection.push(e.r.id); D.vus.push(e.r.id); sauverDrive(); rendre();
+    if (!e.tient) toast("Ce repas fait dépasser le budget");
   } else if (action === "etape") { D.etape = +i; sauverDrive(); rendre(); scrollTo(0, 0); }
   else if (action === "valider") {
     D.texte = texteDrive(D); D.etape = 4; sauverDrive(); rendre(); scrollTo(0, 0);
@@ -334,17 +489,23 @@ function actionDrive(action, i) {
 
 function feuilleChoixRecette(i) {
   const D = etatDrive();
-  const autres = D.selection.filter((_, k) => k !== i).map((id) => S.recettes.find((r) => r.id === id)).filter(Boolean);
-  const liste = candidats(D, D.selection.filter((_, k) => k !== i)).map((r) => ({ r, n: noteRecette(r, D, autres), b: bilanRecette(r, facteurDrive(r, D)) }))
-    .sort((a, b) => b.n - a.n);
+  const ids = D.selection.filter((_, k) => k !== i);
+  const autres = recettesDe(ids);
+  const { reserve } = simulerRepas(ids, D);
+  const base = coutRepas(ids, D).total, restant = D.params.budget - coutAutres(D) - base;
+  const liste = candidats(D, ids).map((r) => {
+    const cout = coutRepas([...ids, r.id], D).total - base;
+    return { r, cout, trop: cout > restant + 0.01, n: noteRecette(r, D, autres, reserve), b: simulerRepas([r.id], D, reserve).bilans.get(r.id) };
+  }).sort((a, b) => (a.trop - b.trop) || (b.n - a.n));
   const { sh, fermer } = ouvrirFeuille(`
     <form class="form">
       <div class="feuille-tete"><h2>Choisir une recette</h2><button type="button" class="lien" data-fermer>Fermer</button></div>
       <label class="recherche">${icLoupe}<input id="cherche-choix" type="search" placeholder="Chercher" data-pas-focus aria-label="Chercher une recette"></label>
-      <ul class="choix">${liste.map(({ r, b }) => `
+      <ul class="choix">${liste.map(({ r, b, cout, trop }) => `
         <li data-nom="${esc(norm(r.nom + " " + r.ingredients.map((x) => x.nom).join(" ")))}"><button type="button" class="choix-ligne ${D.selection[i] === r.id ? "actuelle" : ""}" data-choix="${r.id}">
           <span class="nom">${esc(r.nom)}</span>
           <span class="meta">${metaRecette(r)}${b.total ? `, ${b.ok}/${b.total} en stock` : ""}</span>
+          <span class="meta ${trop ? "trop" : ""}">≈ ${euros(cout)} à acheter${trop ? ", dépasse le budget" : ""}</span>
         </button></li>`).join("")}</ul>
     </form>`, async () => "garder");
   sh.querySelectorAll("[data-choix]").forEach((b) => (b.onclick = () => {
@@ -540,31 +701,8 @@ async function rangerDansStock(sh) {
 
 // Liste de courses : besoins des recettes moins le stock, plus les essentiels sous le seuil
 function listeCourses(D) {
-  const recettes = D.selection.map((id) => S.recettes.find((r) => r.id === id)).filter(Boolean);
-  const besoins = new Map(), basiques = new Set();
-  const famille = (u) => ({ g: "g", kg: "g", mL: "mL", cl: "mL", L: "mL" }[u] || u || "pièce");
-  for (const r of recettes) {
-    const f = facteurDrive(r, D);
-    for (const ing of r.ingredients) {
-      if (ing.quantite == null) { basiques.add(ing.nom); continue; }
-      const p = produitPour(ing);
-      const cle = (p ? "p:" + p.id : "n:" + mots(ing.nom).join(" ")) + "|" + famille(ing.unite);
-      const unite = famille(ing.unite) === "g" ? "g" : famille(ing.unite) === "mL" ? "mL" : ing.unite || "pièce";
-      const b = besoins.get(cle) || { cle, nom: ing.nom, unite, quantite: 0, recettes: [], ing: { ...ing, unite } };
-      b.quantite += convertir(ing.quantite * f, ing.unite, unite) ?? ing.quantite * f;
-      if (!b.recettes.includes(r.nom)) b.recettes.push(r.nom);
-      besoins.set(cle, b);
-    }
-  }
-  const acheter = [], enStock = [];
-  for (const b of besoins.values()) {
-    const { q, ps } = dispoPour(b.ing);
-    b.produit = ps[0] || null;
-    if (ps.length && q == null) { b.dispoTexte = `${qte(+ps[0].quantite, ps[0].unite)}, quantité à vérifier`; enStock.push(b); continue; }
-    const reste = b.quantite - (q || 0);
-    if (reste <= 1e-9) { b.dispoTexte = `${qte(+q.toFixed(2), b.unite)} en stock`; enStock.push(b); }
-    else { b.reste = arrondir(reste, b.unite); b.dispo = q || 0; acheter.push(b); }
-  }
+  const B = besoinsCourses(D.selection, D);
+  const acheter = B.acheter, enStock = B.enStock;
   const essentiels = S.produits.filter(estBas).filter((p) => !acheter.some((a) => a.produit?.id === p.id))
     .map((p) => ({ cle: "e:" + p.id, nom: p.nom, essentiel: true, reste: Math.max(+p.seuil_min - +p.quantite, 0) || 1, unite: p.unite }));
   const tri = (a, b) => a.nom.localeCompare(b.nom, "fr");
@@ -572,8 +710,11 @@ function listeCourses(D) {
     .map(({ p, q }) => ({ cle: "a:" + p.id, id: p.id, nom: p.nom, reste: q, unite: p.unite, ajout: true, stock: +p.quantite }));
   // Un essentiel ajouté à la main n'apparaît qu'une fois
   const essentielsFiltres = essentiels.filter((e) => !D.ajouts[e.cle.slice(2)]);
-  return { recettes, acheter: acheter.sort(tri), essentiels: essentielsFiltres, ajouts: ajouts.sort(tri), enStock: enStock.sort(tri), basiques: [...basiques].sort((a, b) => a.localeCompare(b, "fr")) };
+  for (const a of [...essentielsFiltres, ...ajouts]) a.prix = coutAchat(a.nom, a.reste, a.unite);
+  for (const a of enStock) if (D.forces.includes(a.cle)) a.prix = coutAchat(a.nom, arrondir(a.quantite, a.unite), a.unite);
+  return { recettes: B.recettes, acheter: acheter.sort(tri), essentiels: essentielsFiltres, ajouts: ajouts.sort(tri), enStock: enStock.sort(tri), basiques: B.basiques.sort((a, b) => a.localeCompare(b, "fr")) };
 }
+
 const arrondir = (q, u) => (u === "g" || u === "mL" ? Math.ceil(q / 10) * 10 : Math.ceil(q * 2 - 1e-9) / 2);
 const PLURIELS = { "boîte": "boîtes", pot: "pots", sachet: "sachets", paquet: "paquets", bouteille: "bouteilles", tranche: "tranches", gousse: "gousses" };
 const qte = (q, u) => `${fmtQ(q)}${u && u !== "pièce" ? " " + (+q > 1 && PLURIELS[u] ? PLURIELS[u] : u) : ""}`;
@@ -614,20 +755,34 @@ function vueDrive() {
   </section>`;
 }
 
+function jaugeBudget(D, total, inconnus) {
+  const b = D.params.budget, trop = total > b + 0.01;
+  return `<div class="budget ${trop ? "budget-trop" : ""}">
+    <div class="budget-ligne"><span>Courses estimées</span><b>${euros(total)} <small>sur ${b} €</small></b></div>
+    <span class="budget-jauge" style="--pc:${Math.min(100, Math.round((total / b) * 100))}%"></span>
+    <small>${trop ? `Dépasse le budget de ${euros(total - b)}. Change un repas ou retire-en un.` : `Il reste ${euros(b - total)}.`}${inconnus ? ` Prix inconnu pour ${inconnus} article${inconnus > 1 ? "s" : ""}.` : ""} Prix Carrefour Market Rive-de-Gier.</small>
+  </div>`;
+}
+
 function vueDriveRepas(D) {
-  const sel = D.selection.map((id) => S.recettes.find((r) => r.id === id)).filter(Boolean);
+  const sel = recettesDe(D.selection);
+  const { bilans } = simulerRepas(D.selection, D);
+  const c = coutRepas(D.selection, D), autres = coutAutres(D), total = c.total + autres;
   return `
   <header class="entete"><h1>Les repas</h1>
     <p class="compte">${sel.length} repas pour ${D.params.personnes} personne${D.params.personnes > 1 ? "s" : ""}. Change ceux qui ne te plaisent pas.</p></header>
   ${etapesDrive(2)}
+  ${jaugeBudget(D, total, c.inconnus)}
   <ul class="liste-recettes">${sel.map((r, i) => {
-    const b = bilanRecette(r, facteurDrive(r, D));
+    const b = bilans.get(r.id);
+    const cout = c.total - coutRepas(D.selection.filter((_, k) => k !== i), D).total;
     return `
     <li class="repas">
       <button class="recette" data-recette="${r.id}">
         <span class="nom">${esc(r.nom)}</span>
         <span class="meta">${metaRecette(r)}</span>
-        <span class="dispo">${b.ok === b.total ? `<span class="tag tag-ok">Tout est en stock</span>` : `${b.ok} sur ${b.total} déjà en stock`}</span>
+        <span class="dispo">${b.ok === b.total ? `<span class="tag tag-ok">Tout est en stock</span>` : `${b.ok} sur ${b.total} en stock${b.manquants.length ? ` (manque : ${b.manquants.map((m) => esc(m.i.nom.toLowerCase())).join(", ")})` : ""}`}</span>
+        <span class="cout-repas">≈ ${euros(Math.max(cout, 0))} à acheter</span>
         <span class="jauge" style="--pc:${b.total ? Math.round((b.ok / b.total) * 100) : 0}%"></span>
       </button>
       <div class="repas-actions">
@@ -651,13 +806,18 @@ function vueDriveCourses(D) {
     <li class="article ${coche(a.cle) ? "" : "decoche"}"><label>
       <input type="checkbox" data-article="${esc(a.cle)}" ${coche(a.cle) ? "checked" : ""}>
       <span class="article-texte"><b>${esc(a.nom)}</b> <span class="article-q">${qte(a.reste, a.unite)}</span>
+        <span class="article-prix">${a.prix ? `≈ ${euros(a.prix.cout)}` : "prix ?"}</span>
+        ${a.prix && (a.prix.nb > 1 || convertir(a.reste, a.unite, a.prix.px.unite) < +a.prix.px.quantite * 0.8) ? `<small class="article-pack">${a.prix.nb} × ${esc(a.prix.px.produit || a.prix.px.nom)}${a.prix.px.estime ? " (prix estimé)" : ""}</small>` : a.prix?.px.estime ? `<small class="article-pack">prix estimé</small>` : ""}
         <small>${a.ajout ? `Ajouté depuis le stock, il en reste ${qte(a.stock, a.unite)}` : a.essentiel ? "Essentiel sous le seuil" : `${a.dispo ? `déjà ${qte(+a.dispo.toFixed(2), a.unite)} en stock, ` : ""}pour ${a.recettes.map(esc).join(", ")}`}</small></span>
     </label></li>`;
-  const nb = [...L.acheter, ...L.essentiels, ...L.ajouts].filter((a) => coche(a.cle)).length + L.enStock.filter((a) => D.forces.includes(a.cle)).length;
+  const retenus = [...L.acheter, ...L.essentiels, ...L.ajouts].filter((a) => coche(a.cle)).concat(L.enStock.filter((a) => D.forces.includes(a.cle)));
+  const nb = retenus.length;
+  const total = retenus.reduce((s, a) => s + (a.prix?.cout || 0), 0), inconnus = retenus.filter((a) => !a.prix).length;
   return `
   <header class="entete"><h1>Les courses</h1>
-    <p class="compte">${nb} article${nb > 1 ? "s" : ""} à acheter, budget ${D.params.budget} €. Décoche ce dont tu n'as pas besoin.</p></header>
+    <p class="compte">${nb} article${nb > 1 ? "s" : ""} à acheter. Décoche ce dont tu n'as pas besoin.</p></header>
   ${etapesDrive(3)}
+  ${jaugeBudget(D, total, inconnus)}
   <section class="groupe"><h2>À acheter</h2>
     ${L.acheter.length ? `<ul class="liste articles">${L.acheter.map(ligne).join("")}</ul>` : `<p class="discret">Tout ce qu'il faut pour ces repas est déjà en stock.</p>`}
   </section>
@@ -670,6 +830,7 @@ function vueDriveCourses(D) {
     <li class="article ${D.forces.includes(a.cle) ? "" : "decoche-doux"}"><label>
       <input type="checkbox" data-force="${esc(a.cle)}" ${D.forces.includes(a.cle) ? "checked" : ""} aria-label="Racheter quand même ${esc(a.nom)}">
       <span class="article-texte"><b>${esc(a.nom)}</b> <span class="article-q">${qte(+a.quantite.toFixed(2), a.unite)}</span>
+        ${D.forces.includes(a.cle) ? `<span class="article-prix">${a.prix ? `≈ ${euros(a.prix.cout)}` : "prix ?"}</span>` : ""}
         <small>${esc(a.produit?.nom ?? "")} : ${esc(a.dispoTexte)}. ${D.forces.includes(a.cle) ? "Sera racheté." : "Coche pour racheter quand même."}</small></span>
     </label></li>`).join("")}</ul></section>` : ""}
   ${L.basiques.length ? `<section class="groupe"><h2>Basiques à avoir</h2><p class="discret">${L.basiques.map(esc).join(", ")}</p></section>` : ""}
@@ -700,10 +861,13 @@ function texteDrive(D) {
   const achats = [...L.acheter.filter(coche), ...forces.map((a) => ({ ...a, reste: arrondir(a.quantite, a.unite) }))].sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
   const essentiels = [...L.essentiels.filter(coche), ...L.ajouts.filter(coche)];
   const enStock = L.enStock.filter((a) => !D.forces.includes(a.cle));
+  const retenus = [...L.acheter.filter(coche), ...forces, ...essentiels];
+  const estimation = retenus.reduce((s, a) => s + (a.prix?.cout || 0), 0);
   return [
     `Remplis mon panier Drive Carrefour (Carrefour Market Rive-de-Gier) avec cette liste préparée dans l'appli Stock Maison.`,
     ``,
     `Budget maximum : ${p.budget} €. Repas pour ${p.personnes} personne${p.personnes > 1 ? "s" : ""}.`,
+    `Estimation de l'appli avec les prix du magasin : ${euros(estimation)}.`,
     p.refuses ? `Aliments refusés : ${p.refuses}.` : null,
     p.envies ? `Envies / contraintes : ${p.envies}.` : null,
     ``,
@@ -832,6 +996,7 @@ async function changerQuantite(id, sens) {
   if (!p) return;
   const q = Math.max(0, +(+p.quantite + sens * pas(p.unite)).toFixed(2));
   p.quantite = q;           // mise à jour immédiate à l'écran
+  CACHE.clear();
   verifierAlertes(); rendre();
   navigator.vibrate?.(8);
   try { await S.store.setQuantite(id, q); } catch (e) { toast(e.message); charger(); }
@@ -943,10 +1108,20 @@ const MOTS_VIDES = new Set(["de", "du", "des", "d", "au", "aux", "a", "la", "le"
 const MOTS_TRANSFO = new Set(["concentre", "sauce", "jus", "puree", "soupe", "coulis", "frito", "gamelle", "friand", "chip", "ketchup", "mayonnaise", "avec", "veloute", "pizza", "gateau", "biscuit"]);
 // Synonymes simples : « Steaks hachés » = « Viande hachée »
 const SYNONYMES = { steak: "viande", hachee: "hache" };
-const mots = (t) => norm(t).split(" ").filter((m) => m && !MOTS_VIDES.has(m) && !/^\d+$/.test(m)).map((m) => SYNONYMES[m] || m);
+const MOTS_CACHE = new Map();
+const mots = (t) => {
+  let r = MOTS_CACHE.get(t);
+  if (!r) { r = norm(t).split(" ").filter((m) => m && !MOTS_VIDES.has(m) && !/^\d+$/.test(m)).map((m) => SYNONYMES[m] || m); MOTS_CACHE.set(t, r); }
+  return r;
+};
 
 // Tous les produits du stock qui correspondent à un ingrédient, du plus proche au moins proche
 function produitsPour(ing) {
+  const cle = "pp|" + (ing.produit_id || "") + "|" + ing.nom;
+  if (!CACHE.has(cle)) CACHE.set(cle, produitsPourSansCache(ing));
+  return CACHE.get(cle);
+}
+function produitsPourSansCache(ing) {
   const lie = ing.produit_id && S.produits.find((p) => p.id === ing.produit_id);
   const mi = mots(ing.nom);
   if (!mi.length) return lie ? [lie] : [];
